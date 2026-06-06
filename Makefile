@@ -18,10 +18,5 @@ logs:      ## Follow the logs from every container (Ctrl-C to stop watching)
 ps:        ## Show the status of each container
 	docker compose ps
 
-# TODO(you) step 5 — add a `psql` target that opens a SQL shell inside the
-#   postgres container, so you never have to remember the long command.
-#   See LESSON.md step 5.
-#   hint: docker compose exec postgres psql -U orders -d orders
-#
-# psql:    ## Open a psql shell in the postgres container
-# 	<your command here>
+psql:      ## Open a psql shell in the postgres container (solution to lesson 1, step 5)
+	docker compose exec postgres psql -U orders -d orders
