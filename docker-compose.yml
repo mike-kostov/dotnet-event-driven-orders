@@ -54,13 +54,28 @@ services:
       timeout: 5s
       retries: 10
 
-  # --- hello: the app YOU containerize this lesson. -------------------------
-  # `build: ./hello` tells compose to build the image from hello/Dockerfile
-  # (the one you write in step 4). It waits for the infra to be healthy first,
-  # which demonstrates dependency health-gating.
+  # --- hello: the throwaway app from lesson 1 (your first container). -------
+  # Kept as a reference example; the real service is order-ingest below.
   hello:
     build: ./hello
     container_name: hello
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  # --- order-ingest: the first REAL service (lesson 2). ---------------------
+  # An HTTP API that accepts orders. You write its Dockerfile (step 3) and its
+  # POST /orders handler (step 2). It waits for infra to be healthy first.
+  # (A /healthz-based container healthcheck is added in the observability lesson.)
+  order-ingest:
+    build: ./order-ingest
+    container_name: order-ingest
+    ports:
+      - "${ORDER_INGEST_PORT:-8080}:8080"
+    environment:
+      ASPNETCORE_URLS: http://+:8080
     depends_on:
       kafka:
         condition: service_healthy

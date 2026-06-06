@@ -1,151 +1,124 @@
-# Lesson 01 — Tooling & dev environment
+# Lesson 02 — Your first service: order-ingest
 
-> **Where you are:** the very beginning. You don't need to know any backend yet.
-> By the end you'll have run a real Kafka + Postgres stack with one command, and
-> packaged your own program into a container.
+> **You are on** `lesson/02-order-ingest-api`. Lesson 1's tooling is complete
+> here (the `hello` container + `make psql` are done — that's the "solution to
+> lesson 1"). Now you build the first **real** service.
 >
-> **How lessons work** (see the repo's branch model): you're on the branch
-> `lesson/01-tooling`. It already has everything *placed* for you — you just fill
-> in the spots marked `TODO(you)`, following the steps below. When you finish,
-> compare your work with the next branch, `lesson/02-order-ingest-api`.
+> Fill in the `TODO(you)` markers following the steps below. Check your work
+> against the next branch, `lesson/03-kafka-producer`.
 
 ---
 
 ## 1. Why this lesson exists
 
-A backend system is several programs that must run **the same way** on every
-machine — yours, a teammate's, the cloud. Before we write any of those programs,
-we need a reliable way to *run things*. That's what this lesson is about.
+Every event-driven system has a **front door**: something that receives a
+request and turns it into work. Here that's `order-ingest` — an HTTP API where a
+client places an order.
 
-You'll meet three tools you'll use in every later lesson:
-
-- **Docker** — runs software in **containers**: isolated, reproducible little boxes.
-- **Docker Compose** — starts a *set* of containers together from one file.
-- **Make** — remembers long commands for you, so you type `make up` instead.
-
-We bring up the real infrastructure (Kafka + Postgres) now so these tools are
-learned against the actual moving parts, not a toy.
+We build it on its own first, before adding Kafka (lesson 3), so the HTTP
+concerns are clear. The big idea you'll meet: **`202 Accepted`**. order-ingest
+has no database and doesn't decide whether an order is *valid business-wise* — it
+only checks the request *shape* and replies "got it, I'll process this." That's
+your first taste of **asynchronous** thinking: accepted ≠ done.
 
 ---
 
-## 2. Concepts (read once, it'll click as you go)
+## 2. Concepts
 
-- **Dockerfile** — a recipe. A list of steps to build an image.
-- **Image** — the result of that recipe: a frozen snapshot of your app + the
-  exact environment it needs. Same image → same behaviour everywhere.
-- **Container** — a *running* instance of an image. You can start/stop many
-  containers from one image. When the program inside finishes, the container stops.
-- **Compose** — `docker-compose.yml` lists several services (containers) and how
-  they relate (e.g. "start `hello` only after `postgres` is healthy").
-- **Make** — `make up` runs whatever the `up:` recipe in the `Makefile` says.
-
-> Why Compose and not something fancier (like .NET Aspire)? We want the moving
-> parts *visible* while you learn them — see `docs/adr/0013-compose-only-no-aspire-apphost.md`.
+- **Minimal API** — ASP.NET Core's lightweight style: you map a route straight to
+  a handler (`app.MapPost("/orders", ...)`). No controller classes. (ADR-0004)
+- **DTO** (Data Transfer Object) — a plain shape for the request/response body.
+  Ours live in `order-ingest/Contracts/` and are **owned by this service**
+  (no shared project — ADR-0002).
+- **Status codes** — `202 Accepted` (taken, will process), `400 Bad Request`
+  (the request shape is wrong).
+- **Multi-stage Dockerfile** — build with the big SDK image, ship only the
+  published output in a small runtime image.
 
 ---
 
-## 3. Do this first — bring up the infrastructure
+## 3. Do this — build the POST /orders handler  ← main task
 
-You need **Docker** and **make** installed. Check:
+Open `order-ingest/Program.cs`. The app, `/healthz`, and the route are wired for
+you. Fill in the four `TODO(you)` markers in the `POST /orders` handler:
 
-```bash
-docker --version
-docker compose version
-make --version
-```
+- **2.1 — validate the shape.** Return `400` if `Customer` is empty, `Items` is
+  empty, or any item has `Quantity <= 0` / `UnitPriceCents <= 0`.
+- **2.2 — make an order id.** `var orderId = Guid.NewGuid().ToString();`
+- **2.3 — log it.** `app.Logger.LogInformation("Accepted order {OrderId}", orderId);`
+- **2.4 — return 202** with the id:
+  `return Results.Accepted($"/orders/{orderId}", new PlaceOrderResponse(orderId));`
 
-Create your local env file (it's gitignored), then start just the infra:
-
-```bash
-cp .env.example .env
-docker compose up -d postgres kafka
-docker compose ps
-```
-
-Wait until both show **healthy** (re-run `docker compose ps` a few times). You
-just started a Kafka broker and a Postgres database with two commands. 🎈
-
-> **Hit `Error ... port is already allocated`?** Something else on your machine
-> is already using port 5432 (another Postgres) or 9092 (another Kafka). You don't
-> have to hunt it down — just open `.env` and change `POSTGRES_PORT` (e.g. to
-> `5434`) or `KAFKA_PORT`, then `make down` and `make up` again. This is exactly
-> why those ports live in `.env`.
-
-> `hello` won't start yet — it has no Dockerfile. That's step 4.
+Remove the `Results.StatusCode(501)` placeholder once the TODOs return real results.
 
 ---
 
-## 4. Build the `hello` Dockerfile  ← your main task
+## 4. Build the Dockerfile (multi-stage)
 
-Open `hello/Dockerfile`. There's a tiny .NET program in `hello/Program.cs`
-already (read it — it just prints a greeting). Your job: write the recipe to
-package it. Replace each `TODO(you)` with one instruction:
+Open `order-ingest/Dockerfile` and fill `TODO(you)` 3.1–3.5 — a **two-stage**
+build (you did a one-stage build in lesson 1; the hints are inline). The result:
+a small image that contains the published app but not the SDK.
 
-- **4.1 — `FROM`**: start from the .NET 9 SDK image.
-  `FROM mcr.microsoft.com/dotnet/sdk:9.0`
-- **4.2 — `WORKDIR`**: set the working dir inside the image.
-  `WORKDIR /app`
-- **4.3 — `COPY` + `RUN`**: copy the source in and publish a build.
-  `COPY . .` then `RUN dotnet publish -c Release -o /out`
-- **4.4 — `ENTRYPOINT`**: run the published app.
-  `ENTRYPOINT ["dotnet", "/out/hello.dll"]`
-
-Now build and run everything:
+Then run it:
 
 ```bash
-make up                       # builds the hello image, starts all three
-docker compose logs hello     # see your program's output
+cp .env.example .env            # if you don't have a .env yet
+make up                         # builds order-ingest and starts everything
+docker compose ps               # order-ingest should be Up
 ```
 
-You should see the 👋 greeting. You just built an image from a Dockerfile and
-ran it as a container. The `hello` container then exits (its job is done) — that
-is normal; `docker compose ps -a` will show it as `Exited (0)`.
+Try it:
+
+```bash
+# valid → 202 Accepted + an order id
+curl -i -X POST localhost:8080/orders \
+  -H 'content-type: application/json' \
+  -d '{"customer":"alice@example.com","items":[{"sku":"MARGHERITA","quantity":1,"unitPriceCents":1200}]}'
+
+# invalid (no items) → 400 Bad Request
+curl -i -X POST localhost:8080/orders \
+  -H 'content-type: application/json' \
+  -d '{"customer":"alice@example.com","items":[]}'
+```
+
+> Port 8080 already in use? Change `ORDER_INGEST_PORT` in `.env`, then `make up`.
 
 ---
 
-## 5. Your turn — add a `make psql` shortcut
+## 5. Your turn — add the transition route stubs
 
-Opening a database shell is something you'll do constantly. Typing the full
-command every time is tedious — that's exactly what Make is for.
+Later (lesson 6) an order moves through states via commands. Add **stub** routes
+now that just return `202` (no logic yet):
 
-Open the `Makefile`, find the `TODO(you) step 5` block, and add a `psql` target:
-
-```make
-psql:      ## Open a psql shell in the postgres container
-	docker compose exec postgres psql -U orders -d orders
+```csharp
+app.MapPost("/orders/{id}/confirm",  (string id) => Results.Accepted());
+app.MapPost("/orders/{id}/prepare",  (string id) => Results.Accepted());
+app.MapPost("/orders/{id}/dispatch", (string id) => Results.Accepted());
+app.MapPost("/orders/{id}/deliver",  (string id) => Results.Accepted());
+app.MapPost("/orders/{id}/cancel",   (string id) => Results.Accepted());
 ```
 
-> The recipe line **must start with a TAB**, not spaces.
-
-Then:
-
-```bash
-make psql
-# at the psql prompt, type:  \dt    (lists tables — none yet, that's fine)
-# quit with:  \q
-```
+`curl -i -X POST localhost:8080/orders/abc/confirm` → `202`.
 
 ---
 
 ## 6. You're done when
 
-- [ ] `docker compose ps` shows `kafka` and `postgres` **healthy**.
-- [ ] `make up` builds `hello` and its log shows the 👋 greeting.
-- [ ] `make psql` drops you into a Postgres shell.
-- [ ] You can say, in your own words, what a Dockerfile, an image, and a
-      container are, and what `make up` does.
-- [ ] Clean reset works: `make down` then `make up` brings it all back.
+- [ ] `make up` builds `order-ingest` and it shows `Up` in `docker compose ps`.
+- [ ] Valid `POST /orders` → `202` with an `orderId`; the app logs it.
+- [ ] Invalid `POST /orders` (empty items) → `400`.
+- [ ] The five transition stubs return `202`.
+- [ ] You can explain why order-ingest returns `202` and not `200`/`201`.
 
-Compare your result with the next branch to check your work:
+Check your work:
 
 ```bash
-git diff lesson/02-order-ingest-api -- hello/Dockerfile Makefile
+git diff lesson/03-kafka-producer -- order-ingest Program.cs
 ```
 
 ---
 
 ## 7. Next
 
-In **lesson 02** you write your first real service: `order-ingest`, an HTTP API
-that accepts orders. Check out `lesson/02-order-ingest-api` and open its
-`LESSON.md`.
+In **lesson 03** `order-ingest` stops just logging and starts **producing** each
+accepted order to Kafka. Check out `lesson/03-kafka-producer`.
