@@ -1,0 +1,68 @@
+# docker-compose.yml
+# ===========================================================================
+# Declares the containers that make up our local system and how they relate.
+# `docker compose up` reads this file and starts everything. In lesson 1 we
+# have the infrastructure (Kafka + Postgres) plus a tiny `hello` app you build.
+#
+# This file is GIVEN — read the comments to understand it. Your hands-on work
+# this lesson is the hello/Dockerfile (step 4) and a Makefile target (step 5).
+# ===========================================================================
+
+services:
+  # --- Kafka: the message log future lessons publish/consume from. ----------
+  # Runs in KRaft mode (no Zookeeper). Single broker — fine for learning.
+  kafka:
+    image: apache/kafka:3.8.0
+    container_name: kafka
+    ports:
+      - "${KAFKA_PORT:-9092}:9092"   # broker reachable in the compose network as kafka:9092
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      # Single-node settings (no replication possible with one broker):
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    healthcheck:
+      # "ready" = the broker answers an API request. Compose uses this to gate
+      # other services (see hello.depends_on).
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server kafka:9092 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 15
+
+  # --- Postgres: the database later lessons read/write. ---------------------
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-orders}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-orders}
+      POSTGRES_DB: ${POSTGRES_DB:-orders}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-orders} -d ${POSTGRES_DB:-orders}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # --- hello: the app YOU containerize this lesson. -------------------------
+  # `build: ./hello` tells compose to build the image from hello/Dockerfile
+  # (the one you write in step 4). It waits for the infra to be healthy first,
+  # which demonstrates dependency health-gating.
+  hello:
+    build: ./hello
+    container_name: hello
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
