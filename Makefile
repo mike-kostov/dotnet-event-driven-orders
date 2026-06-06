@@ -4,7 +4,7 @@
 #
 # Recipe lines MUST be indented with a TAB, not spaces — that's a Make rule.
 
-.PHONY: up down logs ps psql topics consume lag migrate seed test
+.PHONY: up down logs ps psql topics consume lag migrate seed test dlq replay
 
 up:        ## Build images and start all containers in the background
 	docker compose up --build -d
@@ -38,3 +38,9 @@ seed:      ## Place an order, drive it to DELIVERED, then query it (lesson 7)
 
 test:      ## Run unit tests in a .NET SDK container — no host dotnet needed (lesson 8)
 	docker run --rm -v "$(CURDIR)":/src -w /src mcr.microsoft.com/dotnet/sdk:9.0 dotnet test order-processor/tests/OrderProcessor.UnitTests
+
+dlq:       ## Peek the dead-letter topic orders.DLT, with keys + headers (lesson 9)
+	docker compose exec kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka:9092 --topic orders.DLT --from-beginning --property print.key=true --property print.headers=true --timeout-ms 5000
+
+replay:    ## Drain orders.DLT back into orders via order-ingest /admin/replay (lesson 9)
+	curl -s -X POST localhost:$(or $(ORDER_INGEST_PORT),8080)/admin/replay; echo

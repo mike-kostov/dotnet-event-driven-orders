@@ -1,90 +1,125 @@
-# Lesson 08 — Testing: the state machine
+# Lesson 09 — Reliability: at-least-once, idempotency, DLQ & replay
 
-> **You are on** `lesson/08-testing`. The whole system works (lessons 1–7). Now
-> you prove a piece of it with **automated tests**. Fill in the `TODO(you)` and
-> check against `lesson/09-reliability-dlq-replay`.
+> **You are on** `lesson/09-reliability-dlq-replay`. The system works (lessons
+> 1–8). Now you make it **survive crashes and poison messages** — the senior core
+> the whole tutorial has been building toward. Fill in the `TODO(you)` and check
+> against `lesson/10-observability-polish`.
 
 ---
 
 ## 1. Why this lesson exists
 
-"Seems right" never closes the loop — a task is done when there's *evidence*. The
-cheapest, highest-value evidence is **unit tests** of pure logic. Our state
-machine is pure (no database, no Kafka), so we can test every `(state, command)`
-pair in milliseconds. That's the base of the **test pyramid**: lots of fast unit
-tests, fewer slow integration tests.
+Real systems crash mid-work and receive bad data. Two failures must never happen:
+**losing** an order, and **double-applying** one. The fix is a pair (ADR-0006):
 
-> **Integration tests** (Testcontainers spinning real Kafka + Postgres) arrive in
-> **lesson 9**, alongside the resilience behaviors worth integration-testing —
-> idempotency, crash recovery, and replay. Testing those here would be premature:
-> they don't exist yet.
+- Commit the Kafka offset **only after** the Postgres write succeeds. A crash then
+  just *redelivers* the message — at-least-once.
+- Make writes **idempotent** on `event_id` (`ON CONFLICT DO NOTHING`), so a
+  redelivery changes nothing.
+
+And for messages that can *never* succeed (illegal transitions, bad payloads), we
+**quarantine** them in a dead-letter topic so one poison message can't stall a
+partition (ADR-0007) — with operator-triggered **replay** to recover after a fix.
 
 ---
 
 ## 2. Concepts
 
-- **xUnit** — the test framework. `[Fact]` is one case; `[Theory]` + `[InlineData]`
-  runs the same test body over many inputs.
-- **Test pyramid** — many unit tests (pure, fast), fewer integration tests (real
-  dependencies, slow), fewer still end-to-end.
-- **No host tooling** — you don't need the .NET SDK installed. `make test` runs
-  `dotnet test` inside an SDK container, mounting the source.
-
-The tests live in `order-processor/tests/OrderProcessor.UnitTests/`.
+- **At-least-once** — every message is processed *at least* once; combined with
+  idempotency, the *effect* is exactly-once.
+- **Manual commit** — you decide when the offset advances. Commit *after* the
+  write (or after dead-lettering), never before.
+- **Idempotency key** — `event_id`. `ON CONFLICT (event_id) DO NOTHING` returns 0
+  rows on a duplicate; skip the rest of the work.
+- **Dead-letter topic** — `orders.DLT`. Failed messages go here (original bytes +
+  diagnostic headers), then the offset is committed so the partition keeps moving.
+- **Replay** — `POST /admin/replay` drains `orders.DLT` back into `orders`,
+  bounded by a high-watermark snapshot. Safe because of idempotency.
 
 ---
 
-## 3. Do this — run the tests, then extend them
+## 3. Do this — three TODOs
 
-```bash
-make test
+**9.1 — manual commit** (`order-processor/ConsumerService.cs`):
+set `EnableAutoCommit = false`, and at the bottom of the loop add
+`_consumer.Commit(result);` so the offset advances only after handling.
+
+**9.2 — idempotency** (`order-processor/Store/OrderStore.cs`):
+in both `SavePlacedOrderAsync` and `ApplyTransitionAsync`, capture the
+`InsertEvent` result and early-return on a duplicate:
+```csharp
+var inserted = await conn.ExecuteAsync(InsertEvent, new { cmd.EventId, cmd.OrderId, cmd.Type, cmd.IssuedAt }, tx);
+if (inserted == 0) { await tx.CommitAsync(); return; }   // already processed
+```
+(remove the plain `InsertEvent` line that follows).
+
+**9.3 — dead-letter failures** (`order-processor/ConsumerService.cs`):
+inject `DeadLetter` and, in the illegal-transition branch and the `catch`, send to
+the DLT instead of only logging:
+```csharp
+await _deadLetter.SendAsync(result, "illegal transition ...");   // and in catch: ex.Message
 ```
 
-This pulls the SDK image (first time), restores, builds, and runs the suite. You
-should see the given tests pass (legal transitions advance; illegal ones return
-null).
+---
 
-Now open `order-processor/tests/OrderProcessor.UnitTests/OrderStateMachineTests.cs`
-and fill `TODO(you) 8.1`: add a `[Theory]` proving CANCEL is **legal** from
-`PLACED`, `CONFIRMED`, and `PREPARING` (each → `"CANCELLED"`). The exact code is in
-the comment. Run `make test` again — your new cases should pass too.
+## 4. Verify the reliability properties
+
+```bash
+cp .env.example .env            # if needed
+make up                         # topic-init now also creates orders.DLT
+```
+
+**Poison quarantine + partition keeps moving:**
+```bash
+# place a good order, then send an illegal transition to a different order
+OID=$(curl -s -X POST localhost:8080/orders -H 'content-type: application/json' \
+  -d '{"customer":"a","items":[{"sku":"X","quantity":1,"unitPriceCents":100}]}' | sed 's/.*"orderId":"//;s/".*//')
+curl -s -o /dev/null -X POST "localhost:8080/orders/$OID/deliver"   # illegal (PLACED -> DELIVER)
+make dlq                        # the illegal command is in orders.DLT, with headers
+```
+
+**Replay:**
+```bash
+make replay                     # {"replayed":N} — drains orders.DLT back into orders
+```
+
+**Idempotency** (redelivery → no duplicate): the same `event_id` delivered twice
+results in exactly one `order_events` row (`make psql` →
+`SELECT event_id, count(*) FROM order_events GROUP BY event_id HAVING count(*) > 1;`
+returns nothing).
 
 ---
 
-## 4. Watch a test fail (then fix it)
+## 5. Your turn — crash test
 
-Testing is most convincing when you see red turn green. Temporarily break a case —
-e.g. change an expected value to something wrong — and run `make test` to see it
-fail with a clear message. Then revert it. (Don't commit the broken version.)
+Under a little load, kill the processor and restart it; confirm nothing is lost:
 
----
-
-## 5. Your turn — cover one more rule
-
-Add a case asserting that CANCEL is **illegal** once `DISPATCHED` or `DELIVERED`
-(returns null). Re-run `make test`.
+```bash
+docker compose kill order-processor && docker compose up -d order-processor
+make lag                        # catches back up to ~0; no orders lost
+```
 
 ---
 
 ## 6. You're done when
 
-- [ ] `make test` is green.
-- [ ] Your `TODO(you) 8.1` cancel-legal `[Theory]` is present and passing.
-- [ ] You added at least one cancel-illegal case.
-- [ ] You can explain the test pyramid and why the state machine is the easiest,
-      highest-value thing to unit-test.
+- [ ] Offsets commit only after the write (`EnableAutoCommit = false` + `Commit`).
+- [ ] A duplicate `event_id` yields exactly one `order_events` row.
+- [ ] An illegal command lands in `orders.DLT` (with headers); good orders on the
+      same partition still process.
+- [ ] `make replay` drains the DLT; reprocessing is a no-op for already-applied events.
+- [ ] You can explain why commit-after-write + idempotency = effectively-once.
 
 Check your work:
 
 ```bash
-git diff lesson/09-reliability-dlq-replay -- order-processor/tests
+git diff lesson/10-observability-polish -- order-processor
 ```
 
 ---
 
 ## 7. Next
 
-In **lesson 09** — the big one — you make the system survive crashes and poison
-messages: at-least-once delivery, idempotency, a dead-letter topic, and replay,
-with Testcontainers integration tests to prove it. Check out
-`lesson/09-reliability-dlq-replay`.
+In **lesson 10** — the finish line — you make the system observable (structured
+logs, health/readiness, OpenTelemetry) and polish the repo. Completing it produces
+the **`final`** branch. Check out `lesson/10-observability-polish`.

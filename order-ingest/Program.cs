@@ -60,4 +60,34 @@ app.MapPost("/orders/{id}/dispatch", (string id, IProducer<string, string> p) =>
 app.MapPost("/orders/{id}/deliver",  (string id, IProducer<string, string> p) => Transition(p, id, "DELIVER"));
 app.MapPost("/orders/{id}/cancel",   (string id, IProducer<string, string> p) => Transition(p, id, "CANCEL"));
 
+// POST /admin/replay (lesson 9) — operator-triggered recovery. Drains the
+// dead-letter topic and republishes to 'orders' so the processor reprocesses
+// them through the normal path (idempotency makes this safe). Bounded by a
+// high-watermark snapshot so it doesn't chase messages re-dead-lettered now.
+app.MapPost("/admin/replay", (IProducer<string, string> producer) =>
+{
+    using var consumer = new ConsumerBuilder<string, string>(new ConsumerConfig
+    {
+        BootstrapServers = bootstrap,
+        GroupId = "order-ingest-replay",
+        EnableAutoCommit = false,
+        AutoOffsetReset = AutoOffsetReset.Earliest,
+    }).Build();
+
+    var tp = new TopicPartition("orders.DLT", 0); // DLT has 1 partition
+    consumer.Assign(new TopicPartitionOffset(tp, Offset.Beginning));
+    var end = consumer.QueryWatermarkOffsets(tp, TimeSpan.FromSeconds(5)).High;
+
+    var replayed = 0;
+    while (replayed < end.Value)
+    {
+        var cr = consumer.Consume(TimeSpan.FromSeconds(2));
+        if (cr is null) break;
+        producer.Produce("orders", new Message<string, string> { Key = cr.Message.Key, Value = cr.Message.Value });
+        replayed++;
+    }
+    producer.Flush(TimeSpan.FromSeconds(5));
+    return Results.Ok(new { replayed });
+});
+
 app.Run();

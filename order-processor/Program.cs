@@ -2,8 +2,9 @@ using OrderProcessor;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Persistence (lesson 5) + the Kafka consumer (lesson 4).
+// Persistence (lesson 5) + the Kafka consumer (lesson 4) + dead-letter (lesson 9).
 builder.Services.AddSingleton<OrderStore>();
+builder.Services.AddSingleton<DeadLetter>();
 builder.Services.AddHostedService<ConsumerService>();
 
 var app = builder.Build();

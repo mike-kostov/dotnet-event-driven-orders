@@ -52,6 +52,8 @@ services:
       - |
         /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 \
           --create --if-not-exists --topic orders --partitions 3 --replication-factor 1
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 \
+          --create --if-not-exists --topic orders.DLT --partitions 1 --replication-factor 1
         echo "topics now:"; /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list
 
   # --- Postgres: the database later lessons read/write. ---------------------

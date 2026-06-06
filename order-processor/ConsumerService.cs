@@ -4,14 +4,17 @@ using OrderProcessor.Contracts;
 
 namespace OrderProcessor;
 
-// Consumes OrderCommands from 'orders'. Lesson 4: consume + log. Lesson 5: also
-// persist PLACE commands. The state machine (lesson 6) and manual commit (lesson 9)
-// come later.
+// Consumes OrderCommands from 'orders'. Lesson 9 makes it RELIABLE:
+//   • commit the offset manually, only AFTER handling (at-least-once)
+//   • dead-letter permanent failures so a poison message can't block a partition
+// (Idempotency lives in OrderStore via ON CONFLICT on event_id.)
 public sealed class ConsumerService : BackgroundService
 {
     private readonly IConsumer<string, string> _consumer;
     private readonly ILogger<ConsumerService> _logger;
     private readonly OrderStore _store;
+    // TODO(you) 9.3 — inject the dead-letter sender:
+    //   private readonly DeadLetter _deadLetter;
 
     public ConsumerService(IConfiguration config, ILogger<ConsumerService> logger, OrderStore store)
     {
@@ -23,7 +26,9 @@ public sealed class ConsumerService : BackgroundService
             BootstrapServers = bootstrap,
             GroupId = "order-processor",
             AutoOffsetReset = AutoOffsetReset.Earliest,
-            EnableAutoCommit = true                 // lesson 9 → manual commit after the DB write
+            // TODO(you) 9.1 — turn auto-commit OFF. We commit manually below, only
+            //   after handling succeeds (or after dead-lettering), for at-least-once.
+            EnableAutoCommit = true
         }).Build();
     }
 
@@ -38,41 +43,51 @@ public sealed class ConsumerService : BackgroundService
             while (!stoppingToken.IsCancellationRequested)
             {
                 var result = _consumer.Consume(stoppingToken);
-                var cmd = JsonSerializer.Deserialize<OrderCommand>(result.Message.Value);
+                try
+                {
+                    var cmd = JsonSerializer.Deserialize<OrderCommand>(result.Message.Value)
+                              ?? throw new InvalidOperationException("unparseable message");
 
-                if (cmd is { Type: "PLACE" })
-                {
-                    await _store.SavePlacedOrderAsync(cmd);
-                    _logger.LogInformation("Placed order {OrderId}", cmd.OrderId);
-                }
-                else if (cmd is not null)
-                {
-                    // A transition. Validate it against the order's PERSISTED state
-                    // using the pure state machine, then apply if legal.
-                    var current = await _store.LoadStateAsync(cmd.OrderId);
-                    var next = current is null ? null : OrderStateMachine.Next(current, cmd.Type);
-                    if (next is null)
+                    if (cmd.Type == "PLACE")
                     {
-                        _logger.LogWarning(
-                            "Illegal transition {Type} for order {OrderId} (state {State}) — skipped (DLQ in lesson 9)",
-                            cmd.Type, cmd.OrderId, current ?? "<unknown>");
+                        await _store.SavePlacedOrderAsync(cmd);
+                        _logger.LogInformation("Placed order {OrderId}", cmd.OrderId);
                     }
                     else
                     {
-                        await _store.ApplyTransitionAsync(cmd, next);
-                        _logger.LogInformation("Applied {Type}: order {OrderId} -> {State}", cmd.Type, cmd.OrderId, next);
+                        var current = await _store.LoadStateAsync(cmd.OrderId);
+                        var next = current is null ? null : OrderStateMachine.Next(current, cmd.Type);
+                        if (next is null)
+                        {
+                            // A permanent (business-invalid) failure.
+                            // TODO(you) 9.3 — dead-letter it instead of just logging:
+                            //   await _deadLetter.SendAsync(result,
+                            //       $"illegal transition {cmd.Type} from {current ?? "<none>"}");
+                            _logger.LogWarning("Illegal transition {Type} for order {OrderId} (state {State})",
+                                cmd.Type, cmd.OrderId, current ?? "<unknown>");
+                        }
+                        else
+                        {
+                            await _store.ApplyTransitionAsync(cmd, next);
+                            _logger.LogInformation("Applied {Type}: order {OrderId} -> {State}", cmd.Type, cmd.OrderId, next);
+                        }
                     }
                 }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    // A transient/unexpected failure.
+                    // TODO(you) 9.3 — dead-letter it too:
+                    //   await _deadLetter.SendAsync(result, ex.Message);
+                    _logger.LogError(ex, "Failed to handle message at offset {Offset}", result.Offset.Value);
+                }
+
+                // TODO(you) 9.1 — commit the offset HERE, after handling (success OR
+                //   dead-letter). A crash before this line just redelivers the message:
+                //     _consumer.Commit(result);
             }
         }
-        catch (OperationCanceledException)
-        {
-            // normal on shutdown
-        }
-        finally
-        {
-            _consumer.Close();
-        }
+        catch (OperationCanceledException) { }
+        finally { _consumer.Close(); }
     }
 
     public override void Dispose()
