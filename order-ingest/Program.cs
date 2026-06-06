@@ -3,33 +3,33 @@ using OrderIngest.Contracts;
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
-// Liveness probe. Compose can health-gate on this. (given)
+// Liveness probe. Compose can health-gate on this.
 app.MapGet("/healthz", () => Results.Ok("healthy"));
 
 // POST /orders — accept a new order ("PLACE").
 //
 // order-ingest has NO database and does NOT decide whether a transition is
-// legal (ADR-0011). This lesson it only validates the request *shape* and
-// returns 202 Accepted — "I took your request, I'll process it." It does not
-// mean the order is confirmed. (Publishing to Kafka comes in lesson 3.)
+// legal (ADR-0011). It validates the request *shape* and returns 202 Accepted —
+// "I took your request, I'll process it." It does not mean the order is confirmed.
 app.MapPost("/orders", (PlaceOrderRequest request) =>
 {
-    // TODO(you) 2.1 — validate the request SHAPE. Return 400 if any of:
-    //   • Customer is null or empty
-    //   • Items is null or empty
-    //   • any item has Quantity <= 0 or UnitPriceCents <= 0
-    //   hint: return Results.BadRequest(new { error = "..." });
+    if (string.IsNullOrWhiteSpace(request.Customer) ||
+        request.Items is null || request.Items.Count == 0 ||
+        request.Items.Any(i => i.Quantity <= 0 || i.UnitPriceCents <= 0))
+    {
+        return Results.BadRequest(new { error = "customer and at least one valid item are required" });
+    }
 
-    // TODO(you) 2.2 — generate a new order id.
-    //   hint: var orderId = Guid.NewGuid().ToString();
-
-    // TODO(you) 2.3 — log that the order was accepted, so you can see it work.
-    //   hint: app.Logger.LogInformation("Accepted order {OrderId}", orderId);
-
-    // TODO(you) 2.4 — return 202 Accepted with the order id.
-    //   hint: return Results.Accepted($"/orders/{orderId}", new PlaceOrderResponse(orderId));
-
-    return Results.StatusCode(501); // placeholder — replace using the TODOs above
+    var orderId = Guid.NewGuid().ToString();
+    app.Logger.LogInformation("Accepted order {OrderId}", orderId);
+    return Results.Accepted($"/orders/{orderId}", new PlaceOrderResponse(orderId));
 });
+
+// Transition commands. Stubs for now (no logic) — fleshed out in lesson 6.
+app.MapPost("/orders/{id}/confirm",  (string id) => Results.Accepted());
+app.MapPost("/orders/{id}/prepare",  (string id) => Results.Accepted());
+app.MapPost("/orders/{id}/dispatch", (string id) => Results.Accepted());
+app.MapPost("/orders/{id}/deliver",  (string id) => Results.Accepted());
+app.MapPost("/orders/{id}/cancel",   (string id) => Results.Accepted());
 
 app.Run();
