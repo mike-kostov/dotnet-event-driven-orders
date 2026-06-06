@@ -5,8 +5,8 @@ using OrderProcessor.Contracts;
 namespace OrderProcessor;
 
 // A hosted background service that consumes OrderCommands from the 'orders'
-// topic. This lesson it just consumes and logs. Persistence (lesson 5), the
-// state machine (lesson 6), and manual commit (lesson 9) come later.
+// topic. This lesson it consumes and logs. Persistence (lesson 5), the state
+// machine (lesson 6), and manual commit (lesson 9) come later.
 public sealed class ConsumerService : BackgroundService
 {
     private readonly IConsumer<string, string> _consumer;
@@ -37,14 +37,11 @@ public sealed class ConsumerService : BackgroundService
             {
                 var result = _consumer.Consume(stoppingToken);
 
-                // TODO(you) 4.1 — handle the consumed message:
-                //   a) deserialize the JSON value into an OrderCommand:
-                //        var cmd = JsonSerializer.Deserialize<OrderCommand>(result.Message.Value);
-                //   b) log what you received and where it came from:
-                //        _logger.LogInformation(
-                //            "Consumed {Type} for order {OrderId} (partition {Partition}, offset {Offset})",
-                //            cmd?.Type, cmd?.OrderId, result.Partition.Value, result.Offset.Value);
-                //
+                var cmd = JsonSerializer.Deserialize<OrderCommand>(result.Message.Value);
+                _logger.LogInformation(
+                    "Consumed {Type} for order {OrderId} (partition {Partition}, offset {Offset})",
+                    cmd?.Type, cmd?.OrderId, result.Partition.Value, result.Offset.Value);
+
                 // Offsets auto-commit for now. Lesson 9 turns this into a MANUAL
                 // commit AFTER persisting to Postgres (at-least-once + idempotency).
             }
