@@ -1,113 +1,105 @@
-# Lesson 06 — The state machine & client-driven transitions
+# Lesson 07 — The read side: order-query
 
-> **You are on** `lesson/06-state-machine-transitions`. Lesson 5 is complete here
-> (PLACE persists to Postgres). Now you bring the order **lifecycle** to life.
-> Fill in the `TODO(you)` and check against `lesson/07-order-query`.
+> **You are on** `lesson/07-order-query`. Lesson 6 is complete here (orders move
+> through their lifecycle). Now you build the **third and final service**,
+> `order-query`, which serves the read projection over HTTP. Fill in the
+> `TODO(you)` and check against `lesson/08-testing`.
 
 ---
 
 ## 1. Why this lesson exists
 
-An order has rules: you can't DELIVER before DISPATCH; you can't CANCEL once it's
-dispatched. Those rules are **domain logic** and belong in one place, expressed
-clearly and tested exhaustively (lesson 8). order-ingest can't enforce them — it
-has no state (ADR-0011) — so it emits transition commands blindly, and
-**order-processor** validates each against the order's *persisted* state.
-
-This is the heart of client-driven transitions: the client requests, the system
-decides, asynchronously.
+Reads and writes have different needs. The write side optimizes for correctness
+(normalized, transactional); the read side optimizes for fast, simple queries —
+served from the `order_view` projection the processor maintains. `order-query` is
+deliberately tiny and has **no Kafka client at all** (ADR-0002): isolation you can
+see. Because the projection lags the write model slightly, querying right after a
+transition shows **eventual consistency** first-hand.
 
 ---
 
 ## 2. Concepts
 
-- **State machine** — a pure function: given the current state and a command,
-  return the next state, or "illegal." No database, no Kafka — just logic.
-- **Client-driven transitions** — order-ingest produces `CONFIRM`/`PREPARE`/… 
-  commands (already wired this lesson); the processor decides legality.
-- **Illegal transitions** — for now we log and skip them. Lesson 9 routes them to
-  a dead-letter topic.
-
-The lifecycle:
-```
-PLACED → CONFIRMED → PREPARING → DISPATCHED → DELIVERED
-   └──────────┴──────────┴── CANCELLED      (CANCEL only before DISPATCH)
-```
+- **Read model / projection** — `order_view` is denormalized (items embedded as
+  JSONB) and shaped for the query, not the write.
+- **Offset pagination** — `?limit=&offset=` with newest-first ordering.
+- **Isolation** — order-query reads Postgres only. It has no producer, no
+  consumer, no topic. Grep the project: zero Kafka.
+- **Eventual consistency** — a transition is applied asynchronously, so a query a
+  moment later may show the previous state briefly.
 
 ---
 
-## 3. Do this — implement the state machine  ← main task
+## 3. Do this — implement the read endpoints  ← main task
 
-Open `order-processor/OrderStateMachine.cs`. Fill `TODO(you) 6.1`: implement
-`Next(currentState, commandType)` to return the resulting state for a legal
-transition or `null` for an illegal one. A `switch` expression on
-`(currentState, commandType)` reads cleanly (the exact arms are in the hint).
+Open `order-query/Program.cs`. The connection and a `ToResponse` helper (which
+parses the items JSON) are given. The SQL for each endpoint is written for you as
+a `const`. Fill the two `TODO(you)` markers:
 
-Everything else is wired for you: order-ingest produces the transition commands,
-and the processor loads state → calls your `Next(...)` → applies legal transitions
-(updating `orders` + `order_view` and appending to `order_events`) or logs illegal ones.
+- **7.1 — `GET /orders/{id}`**: query one row with
+  `QuerySingleOrDefaultAsync<OrderRow>`; return `404` if missing, else
+  `Results.Ok(ToResponse(row))`.
+- **7.2 — `GET /orders`**: query a page with `QueryAsync<OrderRow>` (clamp `limit`,
+  guard `offset`); return `Results.Ok(rows.Select(ToResponse))`.
+
+Remove each `Results.StatusCode(501)` placeholder.
 
 ---
 
-## 4. Run it and drive an order through its lifecycle
+## 4. Run it end-to-end
 
 ```bash
 cp .env.example .env            # if needed
-make up
+make up                         # now starts all three services
+make seed                       # places an order, drives it to DELIVERED, queries it
 ```
 
-Place an order, capture its id, and walk it forward:
+`make seed` should print the order as JSON with `"state":"DELIVERED"` and its
+items. Or do it by hand:
 
 ```bash
-OID=$(curl -s -X POST localhost:8080/orders -H 'content-type: application/json' \
-  -d '{"customer":"alice@example.com","items":[{"sku":"MARGHERITA","quantity":1,"unitPriceCents":1200}]}' \
-  | sed 's/.*"orderId":"//;s/".*//')
-echo "order: $OID"
-
-for t in confirm prepare dispatch deliver; do
-  curl -s -o /dev/null -X POST "localhost:8080/orders/$OID/$t"; sleep 1
-done
-
-make psql -- # then:  SELECT state FROM orders WHERE order_id = '$OID';   → DELIVERED
+curl -s localhost:8081/orders | jq .            # list (newest first)
+curl -s 'localhost:8081/orders?status=DELIVERED&limit=5' | jq .
+curl -s localhost:8081/orders/<id> | jq .       # one order
 ```
 
-Now try an **illegal** transition and watch it get rejected (not applied):
-
-```bash
-OID2=$(curl -s -X POST localhost:8080/orders -H 'content-type: application/json' \
-  -d '{"customer":"bob","items":[{"sku":"X","quantity":1,"unitPriceCents":100}]}' \
-  | sed 's/.*"orderId":"//;s/".*//')
-curl -s -o /dev/null -X POST "localhost:8080/orders/$OID2/deliver"   # DELIVER before DISPATCH
-docker compose logs order-processor | grep -i illegal | tail -1       # logged + skipped
-```
+> Different ports? `make seed` honors `HOST_INGEST` / `HOST_QUERY`, e.g.
+> `HOST_INGEST=localhost:8088 HOST_QUERY=localhost:8089 make seed`.
 
 ---
 
-## 5. Your turn — defend a rule
+## 5. Your turn — prove the isolation
 
-Confirm the cancel rule: CANCEL works before DISPATCH but not after. Place two
-orders; cancel one while PLACED (→ CANCELLED), and try to cancel another after
-dispatching it (→ logged illegal, stays DISPATCHED). Verify with `make psql`.
+Confirm order-query truly has no Kafka:
+
+```bash
+grep -ri kafka order-query/ || echo "no Kafka in order-query — read side is isolated"
+```
+
+Then add a filter of your own (e.g. by customer) end-to-end: extend the SQL +
+query parameter, rebuild, and call it.
 
 ---
 
 ## 6. You're done when
 
-- [ ] A placed order walks `PLACED → CONFIRMED → PREPARING → DISPATCHED → DELIVERED`,
-      observable in `orders.state`.
-- [ ] An illegal transition (e.g. DELIVER before DISPATCH) is logged and **not** applied.
-- [ ] CANCEL is accepted before DISPATCH and rejected after.
-- [ ] The state machine has no I/O (it's a pure function) — ready to unit-test in lesson 8.
+- [ ] All three services run (`make up`); `make seed` shows an order reaching
+      `DELIVERED` via the query API.
+- [ ] `GET /orders/{id}` returns the order or `404`; `GET /orders` supports
+      `status`, `limit`, `offset`.
+- [ ] `grep kafka order-query/` finds nothing — the read side is isolated.
+- [ ] You can explain CQRS + eventual consistency end-to-end.
 
 Check your work:
 
 ```bash
-git diff lesson/07-order-query -- order-processor/OrderStateMachine.cs
+git diff lesson/08-testing -- order-query/Program.cs
 ```
 
 ---
 
 ## 7. Next
 
-In **lesson 07** you build `order-query` — the read-side HTTP API that serves the
-`order_view` projection. Check out `lesson/07-order-query`.
+The system works end-to-end. In **lesson 08** you prove it with tests — xUnit for
+the state machine and Testcontainers for the real Kafka + Postgres path. Check out
+`lesson/08-testing`.

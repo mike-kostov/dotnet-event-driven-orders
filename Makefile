@@ -4,7 +4,7 @@
 #
 # Recipe lines MUST be indented with a TAB, not spaces — that's a Make rule.
 
-.PHONY: up down logs ps psql topics consume lag migrate
+.PHONY: up down logs ps psql topics consume lag migrate seed
 
 up:        ## Build images and start all containers in the background
 	docker compose up --build -d
@@ -32,3 +32,6 @@ lag:       ## Show consumer-group lag for order-processor (lesson 4)
 
 migrate:   ## Re-run database migrations (DbUp; applies any new .sql) (lesson 5)
 	docker compose up --build migrate
+
+seed:      ## Place an order, drive it to DELIVERED, then query it (lesson 7)
+	bash scripts/seed.sh
