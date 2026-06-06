@@ -100,3 +100,20 @@ services:
         condition: service_healthy
       topic-init:
         condition: service_completed_successfully   # wait until the topic exists
+
+  # --- order-processor: consumes OrderCommands (lesson 4). ------------------
+  # A background worker (no public API; just /healthz internally). This lesson
+  # it consumes and logs; persistence + state machine arrive in lessons 5-6.
+  order-processor:
+    build: ./order-processor
+    container_name: order-processor
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      KAFKA_BOOTSTRAP: kafka:9092
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      topic-init:
+        condition: service_completed_successfully
