@@ -1,105 +1,90 @@
-# Lesson 07 — The read side: order-query
+# Lesson 08 — Testing: the state machine
 
-> **You are on** `lesson/07-order-query`. Lesson 6 is complete here (orders move
-> through their lifecycle). Now you build the **third and final service**,
-> `order-query`, which serves the read projection over HTTP. Fill in the
-> `TODO(you)` and check against `lesson/08-testing`.
+> **You are on** `lesson/08-testing`. The whole system works (lessons 1–7). Now
+> you prove a piece of it with **automated tests**. Fill in the `TODO(you)` and
+> check against `lesson/09-reliability-dlq-replay`.
 
 ---
 
 ## 1. Why this lesson exists
 
-Reads and writes have different needs. The write side optimizes for correctness
-(normalized, transactional); the read side optimizes for fast, simple queries —
-served from the `order_view` projection the processor maintains. `order-query` is
-deliberately tiny and has **no Kafka client at all** (ADR-0002): isolation you can
-see. Because the projection lags the write model slightly, querying right after a
-transition shows **eventual consistency** first-hand.
+"Seems right" never closes the loop — a task is done when there's *evidence*. The
+cheapest, highest-value evidence is **unit tests** of pure logic. Our state
+machine is pure (no database, no Kafka), so we can test every `(state, command)`
+pair in milliseconds. That's the base of the **test pyramid**: lots of fast unit
+tests, fewer slow integration tests.
+
+> **Integration tests** (Testcontainers spinning real Kafka + Postgres) arrive in
+> **lesson 9**, alongside the resilience behaviors worth integration-testing —
+> idempotency, crash recovery, and replay. Testing those here would be premature:
+> they don't exist yet.
 
 ---
 
 ## 2. Concepts
 
-- **Read model / projection** — `order_view` is denormalized (items embedded as
-  JSONB) and shaped for the query, not the write.
-- **Offset pagination** — `?limit=&offset=` with newest-first ordering.
-- **Isolation** — order-query reads Postgres only. It has no producer, no
-  consumer, no topic. Grep the project: zero Kafka.
-- **Eventual consistency** — a transition is applied asynchronously, so a query a
-  moment later may show the previous state briefly.
+- **xUnit** — the test framework. `[Fact]` is one case; `[Theory]` + `[InlineData]`
+  runs the same test body over many inputs.
+- **Test pyramid** — many unit tests (pure, fast), fewer integration tests (real
+  dependencies, slow), fewer still end-to-end.
+- **No host tooling** — you don't need the .NET SDK installed. `make test` runs
+  `dotnet test` inside an SDK container, mounting the source.
+
+The tests live in `order-processor/tests/OrderProcessor.UnitTests/`.
 
 ---
 
-## 3. Do this — implement the read endpoints  ← main task
+## 3. Do this — run the tests, then extend them
 
-Open `order-query/Program.cs`. The connection and a `ToResponse` helper (which
-parses the items JSON) are given. The SQL for each endpoint is written for you as
-a `const`. Fill the two `TODO(you)` markers:
+```bash
+make test
+```
 
-- **7.1 — `GET /orders/{id}`**: query one row with
-  `QuerySingleOrDefaultAsync<OrderRow>`; return `404` if missing, else
-  `Results.Ok(ToResponse(row))`.
-- **7.2 — `GET /orders`**: query a page with `QueryAsync<OrderRow>` (clamp `limit`,
-  guard `offset`); return `Results.Ok(rows.Select(ToResponse))`.
+This pulls the SDK image (first time), restores, builds, and runs the suite. You
+should see the given tests pass (legal transitions advance; illegal ones return
+null).
 
-Remove each `Results.StatusCode(501)` placeholder.
+Now open `order-processor/tests/OrderProcessor.UnitTests/OrderStateMachineTests.cs`
+and fill `TODO(you) 8.1`: add a `[Theory]` proving CANCEL is **legal** from
+`PLACED`, `CONFIRMED`, and `PREPARING` (each → `"CANCELLED"`). The exact code is in
+the comment. Run `make test` again — your new cases should pass too.
 
 ---
 
-## 4. Run it end-to-end
+## 4. Watch a test fail (then fix it)
 
-```bash
-cp .env.example .env            # if needed
-make up                         # now starts all three services
-make seed                       # places an order, drives it to DELIVERED, queries it
-```
-
-`make seed` should print the order as JSON with `"state":"DELIVERED"` and its
-items. Or do it by hand:
-
-```bash
-curl -s localhost:8081/orders | jq .            # list (newest first)
-curl -s 'localhost:8081/orders?status=DELIVERED&limit=5' | jq .
-curl -s localhost:8081/orders/<id> | jq .       # one order
-```
-
-> Different ports? `make seed` honors `HOST_INGEST` / `HOST_QUERY`, e.g.
-> `HOST_INGEST=localhost:8088 HOST_QUERY=localhost:8089 make seed`.
+Testing is most convincing when you see red turn green. Temporarily break a case —
+e.g. change an expected value to something wrong — and run `make test` to see it
+fail with a clear message. Then revert it. (Don't commit the broken version.)
 
 ---
 
-## 5. Your turn — prove the isolation
+## 5. Your turn — cover one more rule
 
-Confirm order-query truly has no Kafka:
-
-```bash
-grep -ri kafka order-query/ || echo "no Kafka in order-query — read side is isolated"
-```
-
-Then add a filter of your own (e.g. by customer) end-to-end: extend the SQL +
-query parameter, rebuild, and call it.
+Add a case asserting that CANCEL is **illegal** once `DISPATCHED` or `DELIVERED`
+(returns null). Re-run `make test`.
 
 ---
 
 ## 6. You're done when
 
-- [ ] All three services run (`make up`); `make seed` shows an order reaching
-      `DELIVERED` via the query API.
-- [ ] `GET /orders/{id}` returns the order or `404`; `GET /orders` supports
-      `status`, `limit`, `offset`.
-- [ ] `grep kafka order-query/` finds nothing — the read side is isolated.
-- [ ] You can explain CQRS + eventual consistency end-to-end.
+- [ ] `make test` is green.
+- [ ] Your `TODO(you) 8.1` cancel-legal `[Theory]` is present and passing.
+- [ ] You added at least one cancel-illegal case.
+- [ ] You can explain the test pyramid and why the state machine is the easiest,
+      highest-value thing to unit-test.
 
 Check your work:
 
 ```bash
-git diff lesson/08-testing -- order-query/Program.cs
+git diff lesson/09-reliability-dlq-replay -- order-processor/tests
 ```
 
 ---
 
 ## 7. Next
 
-The system works end-to-end. In **lesson 08** you prove it with tests — xUnit for
-the state machine and Testcontainers for the real Kafka + Postgres path. Check out
-`lesson/08-testing`.
+In **lesson 09** — the big one — you make the system survive crashes and poison
+messages: at-least-once delivery, idempotency, a dead-letter topic, and replay,
+with Testcontainers integration tests to prove it. Check out
+`lesson/09-reliability-dlq-replay`.

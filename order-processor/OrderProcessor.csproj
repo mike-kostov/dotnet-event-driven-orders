@@ -7,6 +7,12 @@
     <RootNamespace>OrderProcessor</RootNamespace>
   </PropertyGroup>
 
+  <!-- The test project lives under tests/; keep its sources out of this app's build. -->
+  <ItemGroup>
+    <Compile Remove="tests/**/*.cs" />
+    <Content Remove="tests/**" />
+  </ItemGroup>
+
   <ItemGroup>
     <!-- Raw Kafka client (ADR-0003). Owned per service. -->
     <PackageReference Include="Confluent.Kafka" Version="2.6.0" />

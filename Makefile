@@ -4,7 +4,7 @@
 #
 # Recipe lines MUST be indented with a TAB, not spaces — that's a Make rule.
 
-.PHONY: up down logs ps psql topics consume lag migrate seed
+.PHONY: up down logs ps psql topics consume lag migrate seed test
 
 up:        ## Build images and start all containers in the background
 	docker compose up --build -d
@@ -35,3 +35,6 @@ migrate:   ## Re-run database migrations (DbUp; applies any new .sql) (lesson 5)
 
 seed:      ## Place an order, drive it to DELIVERED, then query it (lesson 7)
 	bash scripts/seed.sh
+
+test:      ## Run unit tests in a .NET SDK container — no host dotnet needed (lesson 8)
+	docker run --rm -v "$(CURDIR)":/src -w /src mcr.microsoft.com/dotnet/sdk:9.0 dotnet test order-processor/tests/OrderProcessor.UnitTests
