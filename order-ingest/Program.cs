@@ -16,7 +16,7 @@ var app = builder.Build();
 app.MapGet("/healthz", () => Results.Ok("healthy"));
 
 // POST /orders — accept a PLACE and PRODUCE it to the "orders" topic.
-app.MapPost("/orders", (PlaceOrderRequest request, IProducer<string, string> producer) =>
+app.MapPost("/orders", async (PlaceOrderRequest request, IProducer<string, string> producer) =>
 {
     if (string.IsNullOrWhiteSpace(request.Customer) ||
         request.Items is null || request.Items.Count == 0 ||
@@ -27,20 +27,15 @@ app.MapPost("/orders", (PlaceOrderRequest request, IProducer<string, string> pro
 
     var orderId = Guid.NewGuid().ToString();
 
-    // TODO(you) 3.6 — publish an OrderCommand(PLACE) to the "orders" topic.
-    //   Producing is asynchronous, so first change the handler signature above to:
-    //       async (PlaceOrderRequest request, IProducer<string, string> producer) =>
-    //   then add, right here:
-    //       var cmd = new OrderCommand(
-    //           EventId: Guid.NewGuid().ToString(), OrderId: orderId, Type: "PLACE",
-    //           IssuedAt: DateTimeOffset.UtcNow, Customer: request.Customer,
-    //           Items: request.Items,
-    //           TotalCents: request.Items.Sum(i => i.Quantity * i.UnitPriceCents));
-    //       var json = JsonSerializer.Serialize(cmd);
-    //       await producer.ProduceAsync("orders",
-    //           new Message<string, string> { Key = orderId, Value = json });
-    //   The Key = orderId is important: all commands for one order land on the
-    //   same partition, so they stay in order.
+    // Build the command, serialize to JSON, and produce keyed by orderId so all
+    // commands for one order share a partition (and stay in order).
+    var cmd = new OrderCommand(
+        EventId: Guid.NewGuid().ToString(), OrderId: orderId, Type: "PLACE",
+        IssuedAt: DateTimeOffset.UtcNow, Customer: request.Customer,
+        Items: request.Items,
+        TotalCents: request.Items.Sum(i => i.Quantity * i.UnitPriceCents));
+    var json = JsonSerializer.Serialize(cmd);
+    await producer.ProduceAsync("orders", new Message<string, string> { Key = orderId, Value = json });
 
     app.Logger.LogInformation("Accepted order {OrderId}", orderId);
     return Results.Accepted($"/orders/{orderId}", new PlaceOrderResponse(orderId));
