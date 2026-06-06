@@ -22,11 +22,9 @@ app.MapGet("/orders/{id}", async (string id, NpgsqlDataSource db) =>
                                 total_cents AS TotalCents, items::text AS Items, updated_at AS UpdatedAt
                          FROM order_view WHERE order_id = @id;";
 
-    // TODO(you) 7.1 — query one row and return it (404 if missing):
-    //   await using var conn = await db.OpenConnectionAsync();
-    //   var row = await conn.QuerySingleOrDefaultAsync<OrderRow>(sql, new { id });
-    //   return row is null ? Results.NotFound() : Results.Ok(ToResponse(row));
-    return Results.StatusCode(501); // placeholder — replace using the TODO above
+    await using var conn = await db.OpenConnectionAsync();
+    var row = await conn.QuerySingleOrDefaultAsync<OrderRow>(sql, new { id });
+    return row is null ? Results.NotFound() : Results.Ok(ToResponse(row));
 });
 
 // GET /orders?status=&limit=&offset= — a page of orders, newest first.
@@ -39,12 +37,10 @@ app.MapGet("/orders", async (NpgsqlDataSource db, string? status, int limit = 20
                          ORDER BY updated_at DESC
                          LIMIT @limit OFFSET @offset;";
 
-    // TODO(you) 7.2 — query a page and return it (clamp limit, guard offset):
-    //   await using var conn = await db.OpenConnectionAsync();
-    //   var rows = await conn.QueryAsync<OrderRow>(sql,
-    //       new { status, limit = Math.Clamp(limit, 1, 100), offset = Math.Max(offset, 0) });
-    //   return Results.Ok(rows.Select(ToResponse));
-    return Results.StatusCode(501); // placeholder — replace using the TODO above
+    await using var conn = await db.OpenConnectionAsync();
+    var rows = await conn.QueryAsync<OrderRow>(sql,
+        new { status, limit = Math.Clamp(limit, 1, 100), offset = Math.Max(offset, 0) });
+    return Results.Ok(rows.Select(ToResponse));
 });
 
 app.Run();
