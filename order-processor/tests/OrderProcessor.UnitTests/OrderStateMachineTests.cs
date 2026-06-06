@@ -22,12 +22,10 @@ public class OrderStateMachineTests
     public void Illegal_transitions_return_null(string from, string command)
         => Assert.Null(OrderStateMachine.Next(from, command));
 
-    // TODO(you) 8.1 — add a [Theory] proving CANCEL is LEGAL from PLACED,
-    //   CONFIRMED, and PREPARING (each should return "CANCELLED").
-    //   [Theory]
-    //   [InlineData("PLACED")]
-    //   [InlineData("CONFIRMED")]
-    //   [InlineData("PREPARING")]
-    //   public void Cancel_is_legal_before_dispatch(string from)
-    //       => Assert.Equal("CANCELLED", OrderStateMachine.Next(from, "CANCEL"));
+    [Theory]
+    [InlineData("PLACED")]
+    [InlineData("CONFIRMED")]
+    [InlineData("PREPARING")]
+    public void Cancel_is_legal_before_dispatch(string from)
+        => Assert.Equal("CANCELLED", OrderStateMachine.Next(from, "CANCEL"));
 }
