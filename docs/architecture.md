@@ -81,20 +81,22 @@ JSON (ADR-0008), each service owning its own DTOs. `OrderCommand`:
 
 ```json
 {
-  "event_id": "0b5d…",          // unique; the idempotency key
-  "order_id": "a17f…",          // partition key
-  "type": "PLACE",              // PLACE|CONFIRM|PREPARE|DISPATCH|DELIVER|CANCEL
-  "issued_at": "2026-06-05T10:00:00Z",
-  "items": [                    // PLACE only
-    { "sku": "MARGHERITA", "qty": 1, "unit_price_cents": 1200 }
+  "EventId": "0b5d…",           // unique; the idempotency key
+  "OrderId": "a17f…",           // partition key
+  "Type": "PLACE",              // PLACE|CONFIRM|PREPARE|DISPATCH|DELIVER|CANCEL
+  "IssuedAt": "2026-06-05T10:00:00Z",
+  "Items": [                    // PLACE only
+    { "Sku": "MARGHERITA", "Quantity": 1, "UnitPriceCents": 1200 }
   ],
-  "total_cents": 1200,          // PLACE only
-  "customer": "alice@example.com" // PLACE only
+  "TotalCents": 1200,           // PLACE only
+  "Customer": "alice@example.com" // PLACE only
 }
 ```
 
-Serialized with `System.Text.Json`. The contract is documented prose + example,
-not a schema — drift is caught by integration tests across the two services.
+Serialized with `System.Text.Json` using its default (PascalCase) property names —
+both services own matching DTOs, so the wire format is self-consistent. The
+contract is documented prose + example, not a schema; drift is caught by tests
+across the two services. (A snake_case naming policy is a fine future tweak.)
 
 ## Storage (CQRS in Postgres, ADR-0005)
 
