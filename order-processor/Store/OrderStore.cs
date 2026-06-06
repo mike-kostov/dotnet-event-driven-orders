@@ -42,19 +42,14 @@ public sealed class OrderStore
         await using var conn = new NpgsqlConnection(_connString);
         await conn.OpenAsync();
 
-        // TODO(you) 5.1 — write everything in ONE transaction, so any failure
-        //   rolls back ALL of it (write model + projection move together).
-        //   Using the SQL constants above and Dapper's ExecuteAsync:
-        //     await using var tx = await conn.BeginTransactionAsync();
-        //     await conn.ExecuteAsync(InsertEvent, new { cmd.EventId, cmd.OrderId, cmd.Type, cmd.IssuedAt }, tx);
-        //     await conn.ExecuteAsync(UpsertOrder, new { cmd.OrderId, cmd.Customer, cmd.TotalCents }, tx);
-        //     foreach (var i in cmd.Items ?? new List<OrderItem>())
-        //         await conn.ExecuteAsync(InsertItem,
-        //             new { cmd.OrderId, i.Sku, i.Quantity, i.UnitPriceCents }, tx);
-        //     var itemsJson = JsonSerializer.Serialize(cmd.Items ?? new List<OrderItem>());
-        //     await conn.ExecuteAsync(UpsertView,
-        //         new { cmd.OrderId, cmd.Customer, cmd.TotalCents, Items = itemsJson }, tx);
-        //     await tx.CommitAsync();
-        await Task.CompletedTask; // remove once you implement the transaction above
+        // One transaction: event log + write model + projection move together.
+        await using var tx = await conn.BeginTransactionAsync();
+        await conn.ExecuteAsync(InsertEvent, new { cmd.EventId, cmd.OrderId, cmd.Type, cmd.IssuedAt }, tx);
+        await conn.ExecuteAsync(UpsertOrder, new { cmd.OrderId, cmd.Customer, cmd.TotalCents }, tx);
+        foreach (var i in cmd.Items ?? new List<OrderItem>())
+            await conn.ExecuteAsync(InsertItem, new { cmd.OrderId, i.Sku, i.Quantity, i.UnitPriceCents }, tx);
+        var itemsJson = JsonSerializer.Serialize(cmd.Items ?? new List<OrderItem>());
+        await conn.ExecuteAsync(UpsertView, new { cmd.OrderId, cmd.Customer, cmd.TotalCents, Items = itemsJson }, tx);
+        await tx.CommitAsync();
     }
 }

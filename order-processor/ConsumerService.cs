@@ -40,9 +40,8 @@ public sealed class ConsumerService : BackgroundService
                 var result = _consumer.Consume(stoppingToken);
                 var cmd = JsonSerializer.Deserialize<OrderCommand>(result.Message.Value);
 
-                // TODO(you) 5.2 — for a PLACE command, persist it before logging:
-                //   if (cmd is { Type: "PLACE" })
-                //       await _store.SavePlacedOrderAsync(cmd);
+                if (cmd is { Type: "PLACE" })
+                    await _store.SavePlacedOrderAsync(cmd);
 
                 _logger.LogInformation(
                     "Consumed {Type} for order {OrderId} (partition {Partition}, offset {Offset})",
