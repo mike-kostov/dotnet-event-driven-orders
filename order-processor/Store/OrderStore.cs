@@ -37,6 +37,15 @@ public sealed class OrderStore
                 total_cents = EXCLUDED.total_cents, items = EXCLUDED.items,
                 updated_at = now();";
 
+    // --- transitions (lesson 6) ---
+    private const string SelectState = @"SELECT state FROM orders WHERE order_id = @OrderId;";
+
+    private const string UpdateOrderState = @"
+        UPDATE orders SET state = @State, updated_at = now() WHERE order_id = @OrderId;";
+
+    private const string UpdateViewState = @"
+        UPDATE order_view SET state = @State, updated_at = now() WHERE order_id = @OrderId;";
+
     public async Task SavePlacedOrderAsync(OrderCommand cmd)
     {
         await using var conn = new NpgsqlConnection(_connString);
@@ -50,6 +59,26 @@ public sealed class OrderStore
             await conn.ExecuteAsync(InsertItem, new { cmd.OrderId, i.Sku, i.Quantity, i.UnitPriceCents }, tx);
         var itemsJson = JsonSerializer.Serialize(cmd.Items ?? new List<OrderItem>());
         await conn.ExecuteAsync(UpsertView, new { cmd.OrderId, cmd.Customer, cmd.TotalCents, Items = itemsJson }, tx);
+        await tx.CommitAsync();
+    }
+
+    // Current persisted state, or null if the order doesn't exist yet.
+    public async Task<string?> LoadStateAsync(string orderId)
+    {
+        await using var conn = new NpgsqlConnection(_connString);
+        await conn.OpenAsync();
+        return await conn.QuerySingleOrDefaultAsync<string?>(SelectState, new { OrderId = orderId });
+    }
+
+    // Apply a legal transition: append the event and update both state copies, atomically.
+    public async Task ApplyTransitionAsync(OrderCommand cmd, string newState)
+    {
+        await using var conn = new NpgsqlConnection(_connString);
+        await conn.OpenAsync();
+        await using var tx = await conn.BeginTransactionAsync();
+        await conn.ExecuteAsync(InsertEvent, new { cmd.EventId, cmd.OrderId, cmd.Type, cmd.IssuedAt }, tx);
+        await conn.ExecuteAsync(UpdateOrderState, new { cmd.OrderId, State = newState }, tx);
+        await conn.ExecuteAsync(UpdateViewState, new { cmd.OrderId, State = newState }, tx);
         await tx.CommitAsync();
     }
 }

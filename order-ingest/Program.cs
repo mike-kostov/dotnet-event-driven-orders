@@ -41,11 +41,23 @@ app.MapPost("/orders", async (PlaceOrderRequest request, IProducer<string, strin
     return Results.Accepted($"/orders/{orderId}", new PlaceOrderResponse(orderId));
 });
 
-// Transition commands. Stubs for now (no logic) — fleshed out in lesson 6.
-app.MapPost("/orders/{id}/confirm",  (string id) => Results.Accepted());
-app.MapPost("/orders/{id}/prepare",  (string id) => Results.Accepted());
-app.MapPost("/orders/{id}/dispatch", (string id) => Results.Accepted());
-app.MapPost("/orders/{id}/deliver",  (string id) => Results.Accepted());
-app.MapPost("/orders/{id}/cancel",   (string id) => Results.Accepted());
+// Transition commands (lesson 6). Each produces an OrderCommand of the right
+// type, keyed by order_id, and returns 202. order-ingest does NOT check legality
+// (it has no DB) — order-processor validates against persisted state (ADR-0011).
+async Task<IResult> Transition(IProducer<string, string> producer, string orderId, string type)
+{
+    var cmd = new OrderCommand(
+        EventId: Guid.NewGuid().ToString(), OrderId: orderId, Type: type,
+        IssuedAt: DateTimeOffset.UtcNow, Customer: null, Items: null, TotalCents: null);
+    await producer.ProduceAsync("orders",
+        new Message<string, string> { Key = orderId, Value = JsonSerializer.Serialize(cmd) });
+    return Results.Accepted($"/orders/{orderId}");
+}
+
+app.MapPost("/orders/{id}/confirm",  (string id, IProducer<string, string> p) => Transition(p, id, "CONFIRM"));
+app.MapPost("/orders/{id}/prepare",  (string id, IProducer<string, string> p) => Transition(p, id, "PREPARE"));
+app.MapPost("/orders/{id}/dispatch", (string id, IProducer<string, string> p) => Transition(p, id, "DISPATCH"));
+app.MapPost("/orders/{id}/deliver",  (string id, IProducer<string, string> p) => Transition(p, id, "DELIVER"));
+app.MapPost("/orders/{id}/cancel",   (string id, IProducer<string, string> p) => Transition(p, id, "CANCEL"));
 
 app.Run();

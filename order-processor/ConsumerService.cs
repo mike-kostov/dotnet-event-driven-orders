@@ -41,11 +41,28 @@ public sealed class ConsumerService : BackgroundService
                 var cmd = JsonSerializer.Deserialize<OrderCommand>(result.Message.Value);
 
                 if (cmd is { Type: "PLACE" })
+                {
                     await _store.SavePlacedOrderAsync(cmd);
-
-                _logger.LogInformation(
-                    "Consumed {Type} for order {OrderId} (partition {Partition}, offset {Offset})",
-                    cmd?.Type, cmd?.OrderId, result.Partition.Value, result.Offset.Value);
+                    _logger.LogInformation("Placed order {OrderId}", cmd.OrderId);
+                }
+                else if (cmd is not null)
+                {
+                    // A transition. Validate it against the order's PERSISTED state
+                    // using the pure state machine, then apply if legal.
+                    var current = await _store.LoadStateAsync(cmd.OrderId);
+                    var next = current is null ? null : OrderStateMachine.Next(current, cmd.Type);
+                    if (next is null)
+                    {
+                        _logger.LogWarning(
+                            "Illegal transition {Type} for order {OrderId} (state {State}) — skipped (DLQ in lesson 9)",
+                            cmd.Type, cmd.OrderId, current ?? "<unknown>");
+                    }
+                    else
+                    {
+                        await _store.ApplyTransitionAsync(cmd, next);
+                        _logger.LogInformation("Applied {Type}: order {OrderId} -> {State}", cmd.Type, cmd.OrderId, next);
+                    }
+                }
             }
         }
         catch (OperationCanceledException)
