@@ -4,24 +4,26 @@ using OrderProcessor.Contracts;
 
 namespace OrderProcessor;
 
-// A hosted background service that consumes OrderCommands from the 'orders'
-// topic. This lesson it consumes and logs. Persistence (lesson 5), the state
-// machine (lesson 6), and manual commit (lesson 9) come later.
+// Consumes OrderCommands from 'orders'. Lesson 4: consume + log. Lesson 5: also
+// persist PLACE commands. The state machine (lesson 6) and manual commit (lesson 9)
+// come later.
 public sealed class ConsumerService : BackgroundService
 {
     private readonly IConsumer<string, string> _consumer;
     private readonly ILogger<ConsumerService> _logger;
+    private readonly OrderStore _store;
 
-    public ConsumerService(IConfiguration config, ILogger<ConsumerService> logger)
+    public ConsumerService(IConfiguration config, ILogger<ConsumerService> logger, OrderStore store)
     {
         _logger = logger;
+        _store = store;
         var bootstrap = config["KAFKA_BOOTSTRAP"] ?? "kafka:9092";
         _consumer = new ConsumerBuilder<string, string>(new ConsumerConfig
         {
             BootstrapServers = bootstrap,
-            GroupId = "order-processor",            // offsets are tracked per consumer group
+            GroupId = "order-processor",
             AutoOffsetReset = AutoOffsetReset.Earliest,
-            EnableAutoCommit = true                 // simplest for now; lesson 9 → manual commit after the DB write
+            EnableAutoCommit = true                 // lesson 9 → manual commit after the DB write
         }).Build();
     }
 
@@ -29,21 +31,22 @@ public sealed class ConsumerService : BackgroundService
     {
         _consumer.Subscribe("orders");
         _logger.LogInformation("Subscribed to 'orders' as group 'order-processor'");
-        await Task.Yield(); // let the web host finish starting before we block on Consume
+        await Task.Yield();
 
         try
         {
             while (!stoppingToken.IsCancellationRequested)
             {
                 var result = _consumer.Consume(stoppingToken);
-
                 var cmd = JsonSerializer.Deserialize<OrderCommand>(result.Message.Value);
+
+                // TODO(you) 5.2 — for a PLACE command, persist it before logging:
+                //   if (cmd is { Type: "PLACE" })
+                //       await _store.SavePlacedOrderAsync(cmd);
+
                 _logger.LogInformation(
                     "Consumed {Type} for order {OrderId} (partition {Partition}, offset {Offset})",
                     cmd?.Type, cmd?.OrderId, result.Partition.Value, result.Offset.Value);
-
-                // Offsets auto-commit for now. Lesson 9 turns this into a MANUAL
-                // commit AFTER persisting to Postgres (at-least-once + idempotency).
             }
         }
         catch (OperationCanceledException)
@@ -52,7 +55,7 @@ public sealed class ConsumerService : BackgroundService
         }
         finally
         {
-            _consumer.Close(); // leave the group cleanly
+            _consumer.Close();
         }
     }
 

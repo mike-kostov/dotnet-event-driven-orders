@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>migrate</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- DbUp runs plain .sql scripts in order, tracking applied ones (ADR-0010). -->
+    <PackageReference Include="dbup-postgresql" Version="5.0.40" />
+  </ItemGroup>
+
+</Project>

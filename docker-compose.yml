@@ -70,6 +70,19 @@ services:
       timeout: 5s
       retries: 10
 
+  # --- migrate: one-shot DbUp runner. Applies db/migrations/*.sql (lesson 5). -
+  # Mounts the SQL scripts read-only; tracks applied ones (re-runs are no-ops).
+  migrate:
+    build: ./tools/migrate
+    container_name: migrate
+    environment:
+      POSTGRES_CONN: "Host=postgres;Username=orders;Password=orders;Database=orders"
+    volumes:
+      - ./db/migrations:/migrations:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   # --- hello: the throwaway app from lesson 1 (your first container). -------
   # Kept as a reference example; the real service is order-ingest below.
   hello:
@@ -110,6 +123,7 @@ services:
     environment:
       ASPNETCORE_URLS: http://+:8080
       KAFKA_BOOTSTRAP: kafka:9092
+      POSTGRES_CONN: "Host=postgres;Username=orders;Password=orders;Database=orders"   # lesson 5
     depends_on:
       kafka:
         condition: service_healthy
@@ -117,3 +131,5 @@ services:
         condition: service_healthy
       topic-init:
         condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully   # schema must exist first (lesson 5)

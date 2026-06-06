@@ -8,8 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Raw Kafka client (ADR-0003). Same as order-ingest — owned per service. -->
+    <!-- Raw Kafka client (ADR-0003). Owned per service. -->
     <PackageReference Include="Confluent.Kafka" Version="2.6.0" />
+    <!-- Postgres access: Dapper + Npgsql, hand-written SQL (ADR-0009). Added in lesson 5. -->
+    <PackageReference Include="Dapper" Version="2.1.35" />
+    <PackageReference Include="Npgsql" Version="8.0.5" />
   </ItemGroup>
 
 </Project>

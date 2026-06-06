@@ -4,7 +4,7 @@
 #
 # Recipe lines MUST be indented with a TAB, not spaces — that's a Make rule.
 
-.PHONY: up down logs ps psql topics consume lag
+.PHONY: up down logs ps psql topics consume lag migrate
 
 up:        ## Build images and start all containers in the background
 	docker compose up --build -d
@@ -29,3 +29,6 @@ consume:   ## Tail the orders topic from the beginning, showing keys (Ctrl-C to 
 
 lag:       ## Show consumer-group lag for order-processor (lesson 4)
 	docker compose exec kafka /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server kafka:9092 --describe --group order-processor
+
+migrate:   ## Re-run database migrations (DbUp; applies any new .sql) (lesson 5)
+	docker compose up --build migrate

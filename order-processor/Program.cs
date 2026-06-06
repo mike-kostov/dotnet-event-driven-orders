@@ -2,7 +2,8 @@ using OrderProcessor;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Run the Kafka consumer as a background service for the lifetime of the app.
+// Persistence (lesson 5) + the Kafka consumer (lesson 4).
+builder.Services.AddSingleton<OrderStore>();
 builder.Services.AddHostedService<ConsumerService>();
 
 var app = builder.Build();

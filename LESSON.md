@@ -1,117 +1,122 @@
-# Lesson 04 — Consuming from Kafka: order-processor
+# Lesson 05 — Persistence & CQRS write model
 
-> **You are on** `lesson/04-kafka-consumer`. Lesson 3 is complete here
-> (order-ingest produces to Kafka). Now you build the **second service**,
-> `order-processor`, which **consumes** those messages. Fill in the `TODO(you)`
-> and check against `lesson/05-persistence-cqrs`.
+> **You are on** `lesson/05-persistence-cqrs`. Lesson 4 is complete here
+> (order-processor consumes + logs). Now you give it a **memory**: persist PLACE
+> commands to Postgres. Fill in the `TODO(you)` and check against
+> `lesson/06-state-machine-transitions`.
 
 ---
 
 ## 1. Why this lesson exists
 
-A producer alone is half a pipe. Something has to **read** the log. That's
-`order-processor` — a background worker that consumes `OrderCommand` messages and
-(later) acts on them. This lesson keeps it simple: consume each message and log
-it. No database yet.
+So far consumed messages vanish into the log. Now order-processor records them
+durably. We use **CQRS** (ADR-0005): a normalized **write model** that's the
+source of truth (`orders`, `order_items`, `order_events`), plus a denormalized
+**read projection** (`order_view`) shaped for fast queries (order-query reads it
+in lesson 7). We write the SQL by hand with **Dapper** (ADR-0009) and manage the
+schema as plain `.sql` scripts run by **DbUp** (ADR-0010) — nothing about the
+database is hidden.
 
-The idea to internalize: **consumer groups and offsets**. Kafka remembers how far
-a *group* has read via committed **offsets**. *When* you commit is the crux of
-the reliability lesson later (lesson 9) — so we meet offsets now, simply.
+`order_events.event_id` is the primary key — the **idempotency anchor** lesson 9
+will lean on.
 
 ---
 
 ## 2. Concepts
 
-- **Consumer** — reads messages from a topic at its own pace.
-- **Consumer group** — `order-processor`. Kafka tracks read-progress (offsets)
-  per group, and can spread partitions across multiple instances of a group.
-- **Offset** — the position in a partition. "Committed offset" = "the group has
-  processed up to here."
-- **Auto-commit (for now)** — offsets commit automatically on a timer. Simple,
-  but it can lose/duplicate work on a crash — **lesson 9** replaces it with a
-  manual commit *after* the database write.
-- **BackgroundService** — .NET's hosted long-running worker; our consume loop
-  lives in `order-processor/ConsumerService.cs`.
+- **Migration** — a versioned change to the schema. DbUp runs `db/migrations/*.sql`
+  in order and records which ran (re-running is a no-op). It's the one-shot
+  `migrate` container; the schema exists before order-processor starts.
+- **Dapper** — a thin layer over ADO.NET: you write SQL, it maps parameters and
+  rows. The SQL stays visible (read `OrderStore.cs`).
+- **Transaction** — all-or-nothing. We write the event, the order, its items, and
+  the projection **together**; if any fails, none apply.
+- **CQRS** — write model (correct, normalized) vs read projection (fast,
+  denormalized). They're **eventually consistent**.
 
-`order-processor` is its own service with its **own** copy of the `OrderCommand`
-DTO (no shared project — ADR-0002).
-
----
-
-## 3. Do this — fill in the consume loop  ← main task
-
-Open `order-processor/ConsumerService.cs`. The consumer is configured for you
-(group `order-processor`, reads from the earliest offset). Find `TODO(you) 4.1`
-inside the loop and:
-
-1. **Deserialize** the message JSON into an `OrderCommand`:
-   `var cmd = JsonSerializer.Deserialize<OrderCommand>(result.Message.Value);`
-2. **Log** what you got and where it came from:
-   ```csharp
-   _logger.LogInformation(
-       "Consumed {Type} for order {OrderId} (partition {Partition}, offset {Offset})",
-       cmd?.Type, cmd?.OrderId, result.Partition.Value, result.Offset.Value);
-   ```
+Read `db/migrations/0001_init.sql` (the schema) and `order-processor/Store/OrderStore.cs`
+(the SQL) before you start.
 
 ---
 
-## 4. Run it and watch end-to-end flow
+## 3. Do this — persist on PLACE  ← main task
+
+Two `TODO(you)` markers:
+
+**5.1 — the transaction** (`order-processor/Store/OrderStore.cs`, `SavePlacedOrderAsync`).
+The SQL constants are written for you; wire them into **one transaction** with
+Dapper (`BeginTransactionAsync` → `ExecuteAsync` each, passing the tx → `CommitAsync`).
+The exact lines are in the TODO. Remove the `await Task.CompletedTask;` placeholder.
+
+**5.2 — call it from the consumer** (`order-processor/ConsumerService.cs`).
+For a PLACE command, persist before logging:
+```csharp
+if (cmd is { Type: "PLACE" })
+    await _store.SavePlacedOrderAsync(cmd);
+```
+
+---
+
+## 4. Run it and inspect the database
 
 ```bash
 cp .env.example .env            # if needed
-make up                         # infra + topic-init + order-ingest + order-processor
-docker compose ps               # all up
+make up                         # infra → migrate (creates schema) → services
 ```
 
-Place an order, then watch the processor consume it:
+Place an order, then look in Postgres:
 
 ```bash
-curl -s -X POST localhost:8080/orders -H 'content-type: application/json' \
-  -d '{"customer":"alice@example.com","items":[{"sku":"MARGHERITA","quantity":1,"unitPriceCents":1200}]}'
+curl -s -o /dev/null -w '%{http_code}\n' -X POST localhost:8080/orders \
+  -H 'content-type: application/json' \
+  -d '{"customer":"alice@example.com","items":[{"sku":"MARGHERITA","quantity":2,"unitPriceCents":1200}]}'
 
-docker compose logs order-processor | grep Consumed
-make lag                        # consumer-group lag should be ~0 (caught up)
+make psql
 ```
 
-You should see a `Consumed PLACE for order ...` line. 🎉 Producer → Kafka →
-consumer works end-to-end.
+At the `psql` prompt:
+```sql
+SELECT order_id, state, total_cents FROM orders;
+SELECT type FROM order_events;
+SELECT order_id, jsonb_array_length(items) AS item_count FROM order_view;
+\q
+```
+
+You should see one row in each — written atomically. 🎉
 
 ---
 
-## 5. Your turn — see the group catch up
+## 5. Your turn — prove the transaction is atomic
 
-Stop the processor, place a few orders, then start it again and watch it process
-the backlog (offsets remember where it left off):
+Add a second migration to see DbUp apply only the new script:
 
-```bash
-docker compose stop order-processor
-curl -s -X POST localhost:8080/orders -H 'content-type: application/json' \
-  -d '{"customer":"bob","items":[{"sku":"PEPPERONI","quantity":1,"unitPriceCents":1500}]}'
-docker compose start order-processor
-docker compose logs --since=1m order-processor | grep Consumed   # it catches up
-make lag
-```
+1. Create `db/migrations/0002_add_index.sql`:
+   ```sql
+   CREATE INDEX IF NOT EXISTS idx_order_events_order_id ON order_events(order_id);
+   ```
+2. `make migrate` — DbUp runs **only** the new script (0001 is skipped).
+3. `make psql` → `\di` shows the new index.
 
 ---
 
 ## 6. You're done when
 
-- [ ] `make up` runs all services; `docker compose ps` shows them up.
-- [ ] Placing an order produces a `Consumed PLACE ...` log line in order-processor.
-- [ ] `make lag` shows the group caught up (lag ~0).
-- [ ] You can explain consumer group, offset, and lag — and why commit *timing*
-      will matter (foreshadowing lesson 9).
+- [ ] `make up` runs `migrate` and the four tables exist (`\dt` in `make psql`).
+- [ ] A PLACE order writes one row each into `orders`, `order_events`,
+      `order_items`, and `order_view` — in a single transaction.
+- [ ] `make migrate` applies a new script without re-running old ones.
+- [ ] You can explain the write-model vs read-projection split.
 
 Check your work:
 
 ```bash
-git diff lesson/05-persistence-cqrs -- order-processor/ConsumerService.cs
+git diff lesson/06-state-machine-transitions -- order-processor
 ```
 
 ---
 
 ## 7. Next
 
-In **lesson 05** order-processor stops just logging and starts **persisting** to
-Postgres (DbUp migrations + Dapper + the CQRS write model). Check out
-`lesson/05-persistence-cqrs`.
+In **lesson 06** you add the **state machine** and the transition commands
+(confirm → … → deliver), validating each against persisted state. Check out
+`lesson/06-state-machine-transitions`.
