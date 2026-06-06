@@ -11,11 +11,11 @@ but is delivered as a **lesson-branch tutorial** for people new to backend
 > Status: **Phase 1 (Specify) — APPROVED**. Open questions resolved (see
 > Resolved Decisions). Ready to proceed to ADRs + architecture, then per-lesson Plans.
 
-This `SPEC.md` specifies the **final system** — delivered on the final lesson
-branch (`lesson/10-*`), not on `main`. `main` holds the **foundation** (docs) only;
-the system is built up across the lessons (ADR-0012). The incremental teaching is
-planned per-lesson in `docs/plans/NN-lesson.md`
-(see [AGENTS.md → Docs structure](./AGENTS.md)).
+This `SPEC.md` specifies the **final system** — delivered on the **`final`**
+branch, not on `main`. `main` holds the **foundation** (docs) only; the system is
+built up across the lessons, whose branches are per-lesson *start states*
+(ADR-0012). The incremental teaching is planned per-lesson in
+`docs/plans/NN-lesson.md` (see [AGENTS.md → Docs structure](./AGENTS.md)).
 
 ---
 
@@ -72,12 +72,12 @@ isolation, CQRS.
 **Users:** Learners new to backend (incl. front-end developers). The "end user"
 of the running system is whoever drives the HTTP API / `curl`.
 
-**Success looks like:** on the final lesson branch (`lesson/10-*`),
-`docker compose up` → one command → all services healthy → an order can be
-created, observed transitioning through states, and the resilience properties
-(no loss under crash, poison quarantined, safe replay) hold. `main` holds the
-foundation/docs only. Each `lesson/NN-*` branch is the cumulative completed state
-through that lesson, builds, runs, and carries a `LESSON.md` teaching the slice it adds.
+**Success looks like:** on the **`final`** branch, `docker compose up` → one
+command → all services healthy → an order can be created, observed transitioning
+through states, and the resilience properties (no loss under crash, poison
+quarantined, safe replay) hold. `main` holds the foundation/docs only. Each
+`lesson/NN-*` branch is the **start state** of that lesson (prior lessons complete
++ this lesson's `LESSON.md` + stubs to fill), and builds and runs.
 
 ### The Order lifecycle (state machine)
 
@@ -288,8 +288,8 @@ the consumer's correctness paths.
 
 ## Success Criteria
 
-Specific, testable conditions for "done" (verified on the final lesson branch
-`lesson/10-*`; `main` holds foundation docs only):
+Specific, testable conditions for "done" (verified on the **`final`** branch;
+`main` holds foundation docs only):
 
 1. **One-command boot:** `make up` brings up kafka, postgres, topic-init, migrate,
    and the three services; all report healthy via compose healthchecks.
@@ -305,9 +305,10 @@ Specific, testable conditions for "done" (verified on the final lesson branch
 7. **Safe replay:** `make replay` drains `orders.DLT` into `orders`; now-valid
    messages process; already-processed ones are no-ops.
 8. **Quality gates:** `make test` and `make format` pass.
-9. **Tutorial integrity:** each `lesson/NN-*` branch builds and runs and is the
-   cumulative completed state through that lesson; `lesson/10-*` is the finished
-   system; `main` is the foundation; every branch has a `LESSON.md` with the "why".
+9. **Tutorial integrity:** each `lesson/NN-*` branch is the start state of that
+   lesson (prior lessons complete + this lesson's `LESSON.md`) and builds and runs;
+   `lesson/N+1` is the solution to lesson `N`; the `final` branch is the finished
+   system; `main` is the foundation; every lesson branch has a `LESSON.md`.
 
 ---
 

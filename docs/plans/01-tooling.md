@@ -34,27 +34,28 @@ tooling is learned against the actual moving parts, not a toy.
 
 ## The slice this lesson builds
 
-Contents of `lesson/01-tooling` (lesson 1 **completed**, building on the `main`
-foundation):
+`lesson/01-tooling` is the **start state** of lesson 1 (branched from the `main`
+foundation). What the learner **builds** here, guided step-by-step by `LESSON.md`:
 
+- `hello/` — a tiny (~10-line) `dotnet` console app and its **hand-written
+  `Dockerfile`**. Writing this Dockerfile is the core hands-on moment (per the
+  agreed "keep Dockerfile-writing"); it makes "Dockerfile → image → container"
+  concrete, and its shape matches the real services' Dockerfiles in later lessons.
 - `docker-compose.yml` — **Kafka** (KRaft, single broker) and **Postgres 16**,
-  both health-gated; plus a tiny **`hello`** service built from a hand-written
-  Dockerfile (a ~10-line app) purely to make "Dockerfile → image → container"
-  concrete and hands-on.
-- `hello/Dockerfile` + minimal app (e.g. a `dotnet` console or even a shell
-  `echo` image) — the one Dockerfile a learner reads and builds in this lesson.
-- `Makefile` — `up`, `down`, `logs`, `ps` targets, with **one target left as a
-  hands-on TODO** for the learner to add (see Task 4).
-- `.env.example` — committed; ports per SPEC (Postgres `:5432`, Kafka `:9092`).
-- `.gitignore` — `.env`, build artifacts (`bin/`, `obj/`).
-- `LESSON.md` — the teaching content (structure below).
+  both health-gated, plus the `hello` service.
+- `Makefile` — `up`, `down`, `logs`, `ps` targets, then one more (`psql` or
+  `topics`) as the closing hands-on exercise (Task 4).
+- `.env.example` — ports per SPEC (Postgres `:5432`, Kafka `:9092`).
 
-> Branch model (ADR-0012): `main` is the foundation (docs only).
-> `lesson/01-tooling` contains lesson 1 **completed** — the working
-> compose/Make/`hello` tooling. A learner doing it themselves starts from `main`
-> and builds toward this branch; a reader just checks it out and reads. The
-> hands-on target (Task 4) is present and working on this branch; the learner adds
-> it themselves when starting from `main`.
+Provided on the branch as the starting point: `LESSON.md` (the walkthrough) and
+light scaffolding/stubs (e.g. file skeletons with `TODO` markers) so a total
+beginner has a frame to fill, not a blank page. `.gitignore` is already on `main`.
+
+> Branch model (ADR-0012): `main` is the foundation (docs only). `lesson/01-tooling`
+> is the **start** of lesson 1 — the learner builds the tooling in place by
+> following `LESSON.md`. The **completed** result is the next branch
+> (`lesson/02-order-ingest-api`); diff against it to check your work. (Lesson 1 is
+> the one lesson that builds tooling rather than app code, since it's the entry point.)
 
 ## Tasks (authoring order)
 
@@ -91,15 +92,15 @@ to be a concrete Dockerfile example.
 **Scope:** S
 
 ### Task 4: Hands-on target (learner exercise)
-**Description:** One small target — e.g. `make psql` (open a `psql` shell in the
-Postgres container) or `make topics` (list Kafka topics) — is implemented and
-working on this branch. `LESSON.md` walks a doer (starting from the `main`
-foundation, where it's absent) through adding it themselves.
+**Description:** `LESSON.md` walks the learner through adding one small target —
+e.g. `make psql` (open a `psql` shell in the Postgres container) or `make topics`
+(list Kafka topics) — themselves. On `lesson/01` it's a documented `TODO` in the
+`Makefile`; the completed version lands on `lesson/02`.
 **Acceptance:**
-- [ ] The target is present and works on `lesson/01-tooling`.
-- [ ] `LESSON.md` documents the step-by-step to add it from scratch.
-**Verify:** `make <target>` works on this branch; following LESSON.md from `main`
-reproduces it.
+- [ ] `Makefile` has a clearly-marked `# TODO (you):` stub + a pointer to the
+      `LESSON.md` step.
+- [ ] Following `LESSON.md`, `make <target>` works.
+**Verify:** the learner adds it and runs it; diff against `lesson/02` matches.
 **Files:** `Makefile`, `LESSON.md`
 **Scope:** XS
 

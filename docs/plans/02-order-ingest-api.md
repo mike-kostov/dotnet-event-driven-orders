@@ -27,8 +27,9 @@ asynchronous, eventually-consistent thinking.
 
 ## The slice this lesson builds
 
-Contents of `lesson/02-order-ingest-api` (lessons 1–2 completed) = everything from
-`lesson/01-tooling`, plus:
+`lesson/02-order-ingest-api` is the **start state** of lesson 2: lesson 1 complete
+(the working compose/Make/`hello` tooling), plus this lesson's `LESSON.md` and
+stubs to build. What the learner builds here:
 
 - `order-ingest/` — its own project, `Dockerfile`, image (ADR-0002):
   - Minimal API with `POST /orders` (PLACE): validates body, returns `202` + a

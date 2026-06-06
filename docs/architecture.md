@@ -2,8 +2,9 @@
 
 How `dotnet-event-driven-orders` fits together. For the *why* behind each choice,
 see the ADRs in [`docs/adr/`](adr). This describes the **final system** — delivered
-on the final lesson branch (`lesson/10-*`), not on `main` (ADR-0012); it is built
-up incrementally across the lessons (see [`docs/plans/`](plans)).
+on the **`final`** branch, not on `main` (ADR-0012); it is built up incrementally
+across the lessons, whose branches are per-lesson start states
+(see [`docs/plans/`](plans)).
 
 ## Data flow
 

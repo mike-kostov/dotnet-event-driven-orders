@@ -1,8 +1,10 @@
 # Lesson 10 — Observability & final polish
 
 > Plan for authoring `lesson/10-observability-polish`. Builds on `lesson/09-reliability-dlq-replay`.
-> This branch (`lesson/10-observability-polish`) IS the finished system — the
-> reachable end state SPEC.md specifies. `main` holds the foundation only (ADR-0012).
+> `lesson/10` is the **start state** of lesson 10 (lesson 9 complete + this
+> `LESSON.md` + stubs). Completing it produces the **`final`** branch — the
+> finished system and reachable end state SPEC.md specifies. `main` holds the
+> foundation only (ADR-0012).
 
 ## Objective
 
@@ -78,19 +80,19 @@ all SPEC criteria 1–9 verified.
 3. **Do this** — `make up`; follow one order through the trace; break a dep and watch `/readyz`.
 4. **Inspect** — read the OTel setup; find the correlation id in logs.
 5. **Your turn** — add a metric or a log field; see it appear.
-6. **You're done when** — all SPEC success criteria pass on this branch (`lesson/10`).
+6. **You're done when** — all SPEC success criteria pass; the completed result is the `final` branch.
 7. **Done** — recap the journey; pointers to advanced follow-ups (protobuf+Schema
    Registry, MassTransit, cloud deploy, Aspire) explicitly *out of scope* here.
 
 ## Checkpoint / done criteria
 - [ ] `docker compose up` brings everything up healthy (SPEC criterion 1).
-- [ ] All SPEC success criteria (1–9) verified on this branch (`lesson/10`).
+- [ ] All SPEC success criteria (1–9) verified; completed result becomes the `final` branch.
 - [ ] Traces follow an order across services; logs are structured.
 - [ ] README is self-sufficient for a newcomer.
 
 ## Dependencies & next
 - **Depends on:** lesson 09 (behaviors to observe).
-- **Feeds:** nothing — this branch is the finished system / reachable end state.
+- **Feeds:** the `final` branch — completing this lesson produces the finished system.
 
 ## Risks / open questions
 - Keep OTel to console export by default (zero extra infra); mention OTLP/Collector
