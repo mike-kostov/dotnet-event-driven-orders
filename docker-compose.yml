@@ -1,11 +1,9 @@
 # docker-compose.yml
 # ===========================================================================
 # Declares the containers that make up our local system and how they relate.
-# `docker compose up` reads this file and starts everything. In lesson 1 we
-# have the infrastructure (Kafka + Postgres) plus a tiny `hello` app you build.
-#
-# This file is GIVEN — read the comments to understand it. Your hands-on work
-# this lesson is the hello/Dockerfile (step 4) and a Makefile target (step 5).
+# `docker compose up` reads this file and starts everything: the infrastructure
+# (Kafka + Postgres), one-shot init containers, and the services. This file is
+# GIVEN — read the comments to understand it; it grows a little each lesson.
 # ===========================================================================
 
 services:
@@ -30,6 +28,8 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      # Topics are created on purpose by topic-init, never implicitly (lesson 3).
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
     healthcheck:
       # "ready" = the broker answers an API request. Compose uses this to gate
       # other services (see hello.depends_on).
@@ -37,6 +37,22 @@ services:
       interval: 10s
       timeout: 10s
       retries: 15
+
+  # --- topic-init: one-shot. Creates Kafka topics with explicit partitions. --
+  # Auto-create is off on the broker, so topics are created here deliberately.
+  # `orders` gets 3 partitions; the message key (order_id) picks the partition.
+  topic-init:
+    image: apache/kafka:3.8.0
+    container_name: topic-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 \
+          --create --if-not-exists --topic orders --partitions 3 --replication-factor 1
+        echo "topics now:"; /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list
 
   # --- Postgres: the database later lessons read/write. ---------------------
   postgres:
@@ -76,8 +92,11 @@ services:
       - "${ORDER_INGEST_PORT:-8080}:8080"
     environment:
       ASPNETCORE_URLS: http://+:8080
+      KAFKA_BOOTSTRAP: kafka:9092      # where the producer connects (lesson 3)
     depends_on:
       kafka:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      topic-init:
+        condition: service_completed_successfully   # wait until the topic exists

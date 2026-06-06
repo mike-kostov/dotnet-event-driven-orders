@@ -4,7 +4,7 @@
 #
 # Recipe lines MUST be indented with a TAB, not spaces — that's a Make rule.
 
-.PHONY: up down logs ps psql
+.PHONY: up down logs ps psql topics consume
 
 up:        ## Build images and start all containers in the background
 	docker compose up --build -d
@@ -20,3 +20,9 @@ ps:        ## Show the status of each container
 
 psql:      ## Open a psql shell in the postgres container (solution to lesson 1, step 5)
 	docker compose exec postgres psql -U orders -d orders
+
+topics:    ## List Kafka topics and their partition counts (lesson 3)
+	docker compose exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --describe
+
+consume:   ## Tail the orders topic from the beginning, showing keys (Ctrl-C to stop) (lesson 3)
+	docker compose exec kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka:9092 --topic orders --from-beginning --property print.key=true
