@@ -22,8 +22,9 @@ without drowning the learner in branch bookkeeping or content duplication.
   learner to `lesson/01`.
 - `lesson/01-...` … `lesson/10-...` — each branch is the **start state** of that
   lesson: the previous lessons' code **complete**, plus this lesson's `LESSON.md`
-  (the walkthrough) and any stubs/TODOs to fill in. The learner builds this
-  lesson's slice **in place** on the branch.
+  (the walkthrough) and a complete file skeleton with `TODO(you)` markers to fill
+  in (the scaffolding convention — ADR-0014). The learner builds this lesson's
+  slice **in place** on the branch.
 - Because each branch carries the prior lessons complete, **`lesson/N+1` is the
   solution to `lesson/N`** — no separate start/solution branch pair, no
   duplication. To check your work on lesson N, `git diff` against `lesson/N+1`
