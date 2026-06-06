@@ -1,9 +1,17 @@
 using System.Text.Json.Nodes;
 using Dapper;
 using Npgsql;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using OrderQuery.Contracts;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Observability (lesson 10): structured JSON logs + OpenTelemetry traces (console).
+builder.Logging.AddJsonConsole();
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(r => r.AddService("order-query"))
+    .WithTracing(t => t.AddAspNetCoreInstrumentation().AddConsoleExporter());
 
 // Read-only Postgres access. NO Kafka client here at all — order-query is the
 // read side and must stay isolated from the write path (ADR-0002).
