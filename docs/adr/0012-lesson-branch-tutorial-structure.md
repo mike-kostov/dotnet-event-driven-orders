@@ -44,6 +44,24 @@ Two ways to learn:
 Lessons are **milestone-driven**, not pinned to a fixed count (~10 expected); a
 lesson splits if it naturally does.
 
+### Branch topology: stacked
+
+The branches are **stacked**, not branched independently from `main`:
+`main → lesson/01 → lesson/02 → … → lesson/10 → final`. Each lesson branch is
+created from the previous one. This is forced by the cumulative model — a lesson's
+start state *contains* all prior lessons' completed code, so it must build on the
+previous branch. (Branching every lesson independently from `main` would mean
+re-creating every prior lesson's solution on each branch — pure duplication, since
+`main` has no code.)
+
+Construction per branch: from `lesson/N`, create `lesson/N+1`, commit the
+**solution to lesson N** (fill in lesson N's `TODO(you)` markers), then add lesson
+`N+1`'s scaffolding. So the diff `lesson/N → lesson/N+1` is exactly "lesson N's
+solution + lesson N+1's setup", and `final` is `lesson/10` with lesson 10 solved.
+
+Shared docs/ and other `main` content stay authoritative on `main`; lesson
+branches are kept rebased on `main` so they carry current docs.
+
 ## Alternatives Considered
 
 ### Paired `lesson/NN-start` + `lesson/NN-solution` branches
