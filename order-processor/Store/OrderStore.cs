@@ -53,13 +53,10 @@ public sealed class OrderStore
         await conn.OpenAsync();
         await using var tx = await conn.BeginTransactionAsync();
 
-        // TODO(you) 9.2 — make this idempotent. InsertEvent affects 0 rows if this
-        //   event_id was already processed; capture that and skip the rest, so a
-        //   redelivery doesn't duplicate items:
-        //     var inserted = await conn.ExecuteAsync(InsertEvent, new { cmd.EventId, cmd.OrderId, cmd.Type, cmd.IssuedAt }, tx);
-        //     if (inserted == 0) { await tx.CommitAsync(); return; }
-        //   (then delete the plain InsertEvent line below)
-        await conn.ExecuteAsync(InsertEvent, new { cmd.EventId, cmd.OrderId, cmd.Type, cmd.IssuedAt }, tx);
+        // Idempotency (ADR-0006): ON CONFLICT makes InsertEvent affect 0 rows on a
+        // duplicate event_id — skip the rest so a redelivery doesn't double-write.
+        var inserted = await conn.ExecuteAsync(InsertEvent, new { cmd.EventId, cmd.OrderId, cmd.Type, cmd.IssuedAt }, tx);
+        if (inserted == 0) { await tx.CommitAsync(); return; }
 
         await conn.ExecuteAsync(UpsertOrder, new { cmd.OrderId, cmd.Customer, cmd.TotalCents }, tx);
         foreach (var i in cmd.Items ?? new List<OrderItem>())
@@ -84,11 +81,9 @@ public sealed class OrderStore
         await conn.OpenAsync();
         await using var tx = await conn.BeginTransactionAsync();
 
-        // TODO(you) 9.2 — same idempotency guard here:
-        //     var inserted = await conn.ExecuteAsync(InsertEvent, new { cmd.EventId, cmd.OrderId, cmd.Type, cmd.IssuedAt }, tx);
-        //     if (inserted == 0) { await tx.CommitAsync(); return; }
-        //   (then delete the plain InsertEvent line below)
-        await conn.ExecuteAsync(InsertEvent, new { cmd.EventId, cmd.OrderId, cmd.Type, cmd.IssuedAt }, tx);
+        // Same idempotency guard: a redelivered transition is a no-op.
+        var inserted = await conn.ExecuteAsync(InsertEvent, new { cmd.EventId, cmd.OrderId, cmd.Type, cmd.IssuedAt }, tx);
+        if (inserted == 0) { await tx.CommitAsync(); return; }
 
         await conn.ExecuteAsync(UpdateOrderState, new { cmd.OrderId, State = newState }, tx);
         await conn.ExecuteAsync(UpdateViewState, new { cmd.OrderId, State = newState }, tx);
