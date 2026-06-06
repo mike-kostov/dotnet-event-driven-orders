@@ -1,16 +1,16 @@
 using System.Text.Json;
 using Confluent.Kafka;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using OrderIngest.Contracts;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// TODO(you) 10.1 — structured JSON logs:  builder.Logging.AddJsonConsole();
-// TODO(you) 10.2 — OpenTelemetry tracing to the console. Add these usings at the
-//   top of the file: `using OpenTelemetry.Resources;` and `using OpenTelemetry.Trace;`
-//   then add here:
-//     builder.Services.AddOpenTelemetry()
-//         .ConfigureResource(r => r.AddService("order-ingest"))
-//         .WithTracing(t => t.AddAspNetCoreInstrumentation().AddConsoleExporter());
+// Observability (lesson 10): structured JSON logs + OpenTelemetry traces (console).
+builder.Logging.AddJsonConsole();
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(r => r.AddService("order-ingest"))
+    .WithTracing(t => t.AddAspNetCoreInstrumentation().AddConsoleExporter());
 
 // --- Kafka producer (lesson 3) ---------------------------------------------
 // One producer per process, configured from KAFKA_BOOTSTRAP (compose sets it to
