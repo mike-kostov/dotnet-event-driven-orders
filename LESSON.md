@@ -120,3 +120,18 @@ git diff lesson/06-state-machine-transitions -- order-processor
 In **lesson 06** you add the **state machine** and the transition commands
 (confirm → … → deliver), validating each against persisted state. Check out
 `lesson/06-state-machine-transitions`.
+
+<!-- NAV:START -->
+
+---
+
+## 🧭 Navigate
+
+| ◀ Previous | 🔑 Solution to this lesson | Next ▶ |
+|:---|:---:|---:|
+| [Lesson 04 — Consumer](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/lesson/04-kafka-consumer) | [view the diff](https://github.com/mike-kostov/dotnet-event-driven-orders/compare/lesson/05-persistence-cqrs...lesson/06-state-machine-transitions) | [Lesson 06 — State machine](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/lesson/06-state-machine-transitions) |
+
+Or from the terminal: `make prev` · `make solution` · `make next` · `make goto LESSON=5`
+*(`next`/`prev`/`goto` switch branches — commit or stash your edits first; they never discard your work.)*
+
+<!-- NAV:END -->
