@@ -61,6 +61,11 @@ make up                       # kafka, postgres, migrate, the 3 services
 make seed                     # place an order, drive it to DELIVERED, query it
 ```
 
+> **Prerequisites:** Docker + Docker Compose and `make`. Using **Podman**
+> instead? It's a drop-in — alias `docker`→`podman` (or enable Podman Desktop's
+> Docker-compatible socket) and every command here works unchanged; lesson 1 has
+> the details and the one `podman compose` caveat.
+
 ## Commands
 
 | Command | What it does |
