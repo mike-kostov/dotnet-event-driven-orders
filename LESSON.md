@@ -102,3 +102,18 @@ You built a complete, reliable, observable event-driven system from `make` and a
 `Dockerfile` up to CQRS, idempotency, and dead-lettering. Advanced follow-ups
 (all intentionally out of scope here): protobuf + Schema Registry, MassTransit,
 .NET Aspire, an OTLP collector + metrics stack, and cloud deployment.
+
+<!-- NAV:START -->
+
+---
+
+## 🧭 Navigate
+
+| ◀ Previous | 🔑 Solution to this lesson | Next ▶ |
+|:---|:---:|---:|
+| [Lesson 09 — Reliability, DLQ, replay](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/lesson/09-reliability-dlq-replay) | [view the diff](https://github.com/mike-kostov/dotnet-event-driven-orders/compare/lesson/10-observability-polish...final) | [Finished system (`final`)](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/final) |
+
+Or from the terminal: `make prev` · `make solution` · `make next` · `make goto LESSON=10`
+*(`next`/`prev`/`goto` switch branches — commit or stash your edits first; they never discard your work.)*
+
+<!-- NAV:END -->
