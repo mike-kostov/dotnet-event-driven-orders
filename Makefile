@@ -38,3 +38,19 @@ seed:      ## Place an order, drive it to DELIVERED, then query it (lesson 7)
 
 test:      ## Run unit tests in a .NET SDK container — no host dotnet needed (lesson 8)
 	docker run --rm -v "$(CURDIR)":/src -w /src mcr.microsoft.com/dotnet/sdk:10.0 dotnet test order-processor/tests/OrderProcessor.UnitTests
+
+# --- lesson navigation (prev / next / solution / goto) ---
+.PHONY: next prev solution goto
+LESSON_SEQ := main lesson/01-tooling lesson/02-order-ingest-api lesson/03-kafka-producer lesson/04-kafka-consumer lesson/05-persistence-cqrs lesson/06-state-machine-transitions lesson/07-order-query lesson/08-testing lesson/09-reliability-dlq-replay lesson/10-observability-polish final
+
+next:      ## Check out the NEXT lesson (commit or stash your edits first)
+	@cur=$$(git rev-parse --abbrev-ref HEAD); f=0; n=""; for x in $(LESSON_SEQ); do if [ "$$f" = 1 ]; then n=$$x; break; fi; if [ "$$x" = "$$cur" ]; then f=1; fi; done; if [ -n "$$n" ]; then echo "-> $$n"; git checkout "$$n"; else echo "You are at the end (final)."; fi
+
+prev:      ## Check out the PREVIOUS lesson
+	@cur=$$(git rev-parse --abbrev-ref HEAD); p=""; for x in $(LESSON_SEQ); do if [ "$$x" = "$$cur" ]; then break; fi; p=$$x; done; if [ -n "$$p" ]; then echo "<- $$p"; git checkout "$$p"; else echo "You are at the start (main)."; fi
+
+solution:  ## Show the diff from your work to the next lesson (the solution)
+	@cur=$$(git rev-parse --abbrev-ref HEAD); f=0; n=""; for x in $(LESSON_SEQ); do if [ "$$f" = 1 ]; then n=$$x; break; fi; if [ "$$x" = "$$cur" ]; then f=1; fi; done; if [ -n "$$n" ]; then git --no-pager diff "$$n"; else echo "No next lesson to compare against."; fi
+
+goto:      ## Check out a lesson by number, e.g. make goto LESSON=6
+	@for x in $(LESSON_SEQ); do case "$$x" in lesson/0$(LESSON)-*|lesson/$(LESSON)-*) echo "-> $$x"; git checkout "$$x"; exit 0;; esac; done; echo "Usage: make goto LESSON=<1..10>"

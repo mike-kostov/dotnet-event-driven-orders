@@ -88,3 +88,18 @@ In **lesson 09** — the big one — you make the system survive crashes and poi
 messages: at-least-once delivery, idempotency, a dead-letter topic, and replay,
 with Testcontainers integration tests to prove it. Check out
 `lesson/09-reliability-dlq-replay`.
+
+<!-- NAV:START -->
+
+---
+
+## 🧭 Navigate
+
+| ◀ Previous | 🔑 Solution to this lesson | Next ▶ |
+|:---|:---:|---:|
+| [Lesson 07 — order-query](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/lesson/07-order-query) | [view the diff](https://github.com/mike-kostov/dotnet-event-driven-orders/compare/lesson/08-testing...lesson/09-reliability-dlq-replay) | [Lesson 09 — Reliability, DLQ, replay](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/lesson/09-reliability-dlq-replay) |
+
+Or from the terminal: `make prev` · `make solution` · `make next` · `make goto LESSON=8`
+*(`next`/`prev`/`goto` switch branches — commit or stash your edits first; they never discard your work.)*
+
+<!-- NAV:END -->
