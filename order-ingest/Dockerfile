@@ -7,16 +7,16 @@
 # ===========================================================================
 
 # ---- build stage (has the full SDK) ----
-# TODO(you) 3.1 — start FROM the .NET 9 SDK image and name this stage `build`.
-#   hint: FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+# TODO(you) 3.1 — start FROM the .NET 10 SDK image and name this stage `build`.
+#   hint: FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY . .
 # TODO(you) 3.2 — publish a Release build into /app.
 #   hint: RUN dotnet publish -c Release -o /app
 
 # ---- runtime stage (small — ASP.NET runtime only) ----
-# TODO(you) 3.3 — start a new, smaller stage FROM the ASP.NET 9 runtime image.
-#   hint: FROM mcr.microsoft.com/dotnet/aspnet:9.0
+# TODO(you) 3.3 — start a new, smaller stage FROM the ASP.NET 10 runtime image.
+#   hint: FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 # TODO(you) 3.4 — copy the published output from the build stage into this image.
 #   hint: COPY --from=build /app .
