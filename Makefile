@@ -37,4 +37,4 @@ seed:      ## Place an order, drive it to DELIVERED, then query it (lesson 7)
 	bash scripts/seed.sh
 
 test:      ## Run unit tests in a .NET SDK container — no host dotnet needed (lesson 8)
-	docker run --rm -v "$(CURDIR)":/src -w /src mcr.microsoft.com/dotnet/sdk:9.0 dotnet test order-processor/tests/OrderProcessor.UnitTests
+	docker run --rm -v "$(CURDIR)":/src -w /src mcr.microsoft.com/dotnet/sdk:10.0 dotnet test order-processor/tests/OrderProcessor.UnitTests
