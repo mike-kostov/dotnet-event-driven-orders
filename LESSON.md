@@ -111,3 +111,18 @@ git diff lesson/07-order-query -- order-processor/OrderStateMachine.cs
 
 In **lesson 07** you build `order-query` — the read-side HTTP API that serves the
 `order_view` projection. Check out `lesson/07-order-query`.
+
+<!-- NAV:START -->
+
+---
+
+## 🧭 Navigate
+
+| ◀ Previous | 🔑 Solution to this lesson | Next ▶ |
+|:---|:---:|---:|
+| [Lesson 05 — Persistence & CQRS](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/lesson/05-persistence-cqrs) | [view the diff](https://github.com/mike-kostov/dotnet-event-driven-orders/compare/lesson/06-state-machine-transitions...lesson/07-order-query) | [Lesson 07 — order-query](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/lesson/07-order-query) |
+
+Or from the terminal: `make prev` · `make solution` · `make next` · `make goto LESSON=6`
+*(`next`/`prev`/`goto` switch branches — commit or stash your edits first; they never discard your work.)*
+
+<!-- NAV:END -->
