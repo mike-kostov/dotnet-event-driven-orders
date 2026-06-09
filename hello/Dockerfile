@@ -8,9 +8,9 @@
 # When all four are done, run `make up` and watch the `hello` logs.
 # ===========================================================================
 
-# TODO(you) 4.1 — Start FROM a base image that already has the .NET 9 SDK.
+# TODO(you) 4.1 — Start FROM a base image that already has the .NET 10 SDK.
 #   This gives us the `dotnet` tooling to build the app.
-#   hint: mcr.microsoft.com/dotnet/sdk:9.0
+#   hint: mcr.microsoft.com/dotnet/sdk:10.0
 # FROM <base-image>
 
 # TODO(you) 4.2 — Set the working directory inside the image to /app.

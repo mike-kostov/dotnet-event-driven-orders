@@ -24,7 +24,7 @@ built up across the lessons, whose branches are per-lesson *start states*
 These are the .NET translation choices I'm **assuming** where we did not
 explicitly decide. Correct any now or I'll proceed with them into the ADRs:
 
-1. **.NET 9** (current LTS-adjacent SDK), one target framework across all services.
+1. **.NET 10** (current LTS SDK), one target framework across all services.
 2. **HTTP:** ASP.NET Core **Minimal APIs** (`WebApplication.CreateBuilder`), no
    MVC controllers — matches the user's `phnotificationsapi` production service.
 3. **Kafka client:** **`Confluent.Kafka`** directly, no bus abstraction (no
@@ -126,7 +126,7 @@ never touches Postgres.
 
 ## Tech Stack
 
-- **Language / runtime:** C# / .NET 9
+- **Language / runtime:** C# / .NET 10
 - **HTTP:** ASP.NET Core Minimal APIs
 - **Messaging:** Apache Kafka (KRaft), client `Confluent.Kafka`
 - **Storage:** PostgreSQL 16; Dapper over `Npgsql` (hand-written SQL)

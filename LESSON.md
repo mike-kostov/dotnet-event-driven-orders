@@ -81,8 +81,8 @@ Open `hello/Dockerfile`. There's a tiny .NET program in `hello/Program.cs`
 already (read it — it just prints a greeting). Your job: write the recipe to
 package it. Replace each `TODO(you)` with one instruction:
 
-- **4.1 — `FROM`**: start from the .NET 9 SDK image.
-  `FROM mcr.microsoft.com/dotnet/sdk:9.0`
+- **4.1 — `FROM`**: start from the .NET 10 SDK image.
+  `FROM mcr.microsoft.com/dotnet/sdk:10.0`
 - **4.2 — `WORKDIR`**: set the working dir inside the image.
   `WORKDIR /app`
 - **4.3 — `COPY` + `RUN`**: copy the source in and publish a build.
