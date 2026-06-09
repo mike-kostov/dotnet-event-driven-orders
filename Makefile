@@ -37,7 +37,7 @@ seed:      ## Place an order, drive it to DELIVERED, then query it (lesson 7)
 	bash scripts/seed.sh
 
 test:      ## Run unit tests in a .NET SDK container — no host dotnet needed (lesson 8)
-	docker run --rm -v "$(CURDIR)":/src -w /src mcr.microsoft.com/dotnet/sdk:9.0 dotnet test order-processor/tests/OrderProcessor.UnitTests
+	docker run --rm -v "$(CURDIR)":/src -w /src mcr.microsoft.com/dotnet/sdk:10.0 dotnet test order-processor/tests/OrderProcessor.UnitTests
 
 dlq:       ## Peek the dead-letter topic orders.DLT, with keys + headers (lesson 9)
 	docker compose exec kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka:9092 --topic orders.DLT --from-beginning --property print.key=true --property print.headers=true --timeout-ms 5000
