@@ -40,18 +40,18 @@ This is **tutorial-first** (ADR-0012):
 
 ### Lessons
 
-| # | Branch | You build |
-|---|--------|-----------|
-| 01 | `lesson/01-tooling` | Docker, Compose, Make; containerize a tiny app |
-| 02 | `lesson/02-order-ingest-api` | order-ingest HTTP API (Minimal APIs, `202`) |
-| 03 | `lesson/03-kafka-producer` | produce `OrderCommand` to Kafka |
-| 04 | `lesson/04-kafka-consumer` | order-processor consumes |
-| 05 | `lesson/05-persistence-cqrs` | Postgres write model + projection (DbUp, Dapper) |
-| 06 | `lesson/06-state-machine-transitions` | the order lifecycle state machine |
-| 07 | `lesson/07-order-query` | the read-side API |
-| 08 | `lesson/08-testing` | xUnit unit tests |
-| 09 | `lesson/09-reliability-dlq-replay` | at-least-once, idempotency, DLQ, replay |
-| 10 | `lesson/10-observability-polish` | structured logs, health, OpenTelemetry |
+| # | Lesson | You build | Solution |
+|---|--------|-----------|----------|
+| 01 | [Tooling](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/lesson/01-tooling) | Docker, Compose, Make; containerize a tiny app | [diff](https://github.com/mike-kostov/dotnet-event-driven-orders/compare/lesson/01-tooling...lesson/02-order-ingest-api) |
+| 02 | [order-ingest API](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/lesson/02-order-ingest-api) | order-ingest HTTP API (Minimal APIs, `202`) | [diff](https://github.com/mike-kostov/dotnet-event-driven-orders/compare/lesson/02-order-ingest-api...lesson/03-kafka-producer) |
+| 03 | [Kafka producer](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/lesson/03-kafka-producer) | produce `OrderCommand` to Kafka | [diff](https://github.com/mike-kostov/dotnet-event-driven-orders/compare/lesson/03-kafka-producer...lesson/04-kafka-consumer) |
+| 04 | [Consumer](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/lesson/04-kafka-consumer) | order-processor consumes | [diff](https://github.com/mike-kostov/dotnet-event-driven-orders/compare/lesson/04-kafka-consumer...lesson/05-persistence-cqrs) |
+| 05 | [Persistence/CQRS](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/lesson/05-persistence-cqrs) | Postgres write model + projection (DbUp, Dapper) | [diff](https://github.com/mike-kostov/dotnet-event-driven-orders/compare/lesson/05-persistence-cqrs...lesson/06-state-machine-transitions) |
+| 06 | [State machine](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/lesson/06-state-machine-transitions) | the order lifecycle state machine | [diff](https://github.com/mike-kostov/dotnet-event-driven-orders/compare/lesson/06-state-machine-transitions...lesson/07-order-query) |
+| 07 | [order-query](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/lesson/07-order-query) | the read-side API | [diff](https://github.com/mike-kostov/dotnet-event-driven-orders/compare/lesson/07-order-query...lesson/08-testing) |
+| 08 | [Testing](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/lesson/08-testing) | xUnit unit tests | [diff](https://github.com/mike-kostov/dotnet-event-driven-orders/compare/lesson/08-testing...lesson/09-reliability-dlq-replay) |
+| 09 | [Reliability](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/lesson/09-reliability-dlq-replay) | at-least-once, idempotency, DLQ, replay | [diff](https://github.com/mike-kostov/dotnet-event-driven-orders/compare/lesson/09-reliability-dlq-replay...lesson/10-observability-polish) |
+| 10 | [Observability](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/lesson/10-observability-polish) | structured logs, health, OpenTelemetry | [diff](https://github.com/mike-kostov/dotnet-event-driven-orders/compare/lesson/10-observability-polish...final) |
 
 ## Quick start (on `final`)
 
