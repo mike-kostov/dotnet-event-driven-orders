@@ -103,3 +103,18 @@ git diff lesson/08-testing -- order-query/Program.cs
 The system works end-to-end. In **lesson 08** you prove it with tests — xUnit for
 the state machine and Testcontainers for the real Kafka + Postgres path. Check out
 `lesson/08-testing`.
+
+<!-- NAV:START -->
+
+---
+
+## 🧭 Navigate
+
+| ◀ Previous | 🔑 Solution to this lesson | Next ▶ |
+|:---|:---:|---:|
+| [Lesson 06 — State machine](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/lesson/06-state-machine-transitions) | [view the diff](https://github.com/mike-kostov/dotnet-event-driven-orders/compare/lesson/07-order-query...lesson/08-testing) | [Lesson 08 — Testing](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/lesson/08-testing) |
+
+Or from the terminal: `make prev` · `make solution` · `make next` · `make goto LESSON=7`
+*(`next`/`prev`/`goto` switch branches — commit or stash your edits first; they never discard your work.)*
+
+<!-- NAV:END -->
