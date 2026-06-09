@@ -123,3 +123,18 @@ git diff lesson/10-observability-polish -- order-processor
 In **lesson 10** — the finish line — you make the system observable (structured
 logs, health/readiness, OpenTelemetry) and polish the repo. Completing it produces
 the **`final`** branch. Check out `lesson/10-observability-polish`.
+
+<!-- NAV:START -->
+
+---
+
+## 🧭 Navigate
+
+| ◀ Previous | 🔑 Solution to this lesson | Next ▶ |
+|:---|:---:|---:|
+| [Lesson 08 — Testing](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/lesson/08-testing) | [view the diff](https://github.com/mike-kostov/dotnet-event-driven-orders/compare/lesson/09-reliability-dlq-replay...lesson/10-observability-polish) | [Lesson 10 — Observability](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/lesson/10-observability-polish) |
+
+Or from the terminal: `make prev` · `make solution` · `make next` · `make goto LESSON=9`
+*(`next`/`prev`/`goto` switch branches — commit or stash your edits first; they never discard your work.)*
+
+<!-- NAV:END -->

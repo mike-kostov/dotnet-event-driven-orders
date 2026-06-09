@@ -44,3 +44,19 @@ dlq:       ## Peek the dead-letter topic orders.DLT, with keys + headers (lesson
 
 replay:    ## Drain orders.DLT back into orders via order-ingest /admin/replay (lesson 9)
 	curl -s -X POST localhost:$(or $(ORDER_INGEST_PORT),8080)/admin/replay; echo
+
+# --- lesson navigation (prev / next / solution / goto) ---
+.PHONY: next prev solution goto
+LESSON_SEQ := main lesson/01-tooling lesson/02-order-ingest-api lesson/03-kafka-producer lesson/04-kafka-consumer lesson/05-persistence-cqrs lesson/06-state-machine-transitions lesson/07-order-query lesson/08-testing lesson/09-reliability-dlq-replay lesson/10-observability-polish final
+
+next:      ## Check out the NEXT lesson (commit or stash your edits first)
+	@cur=$$(git rev-parse --abbrev-ref HEAD); f=0; n=""; for x in $(LESSON_SEQ); do if [ "$$f" = 1 ]; then n=$$x; break; fi; if [ "$$x" = "$$cur" ]; then f=1; fi; done; if [ -n "$$n" ]; then echo "-> $$n"; git checkout "$$n"; else echo "You are at the end (final)."; fi
+
+prev:      ## Check out the PREVIOUS lesson
+	@cur=$$(git rev-parse --abbrev-ref HEAD); p=""; for x in $(LESSON_SEQ); do if [ "$$x" = "$$cur" ]; then break; fi; p=$$x; done; if [ -n "$$p" ]; then echo "<- $$p"; git checkout "$$p"; else echo "You are at the start (main)."; fi
+
+solution:  ## Show the diff from your work to the next lesson (the solution)
+	@cur=$$(git rev-parse --abbrev-ref HEAD); f=0; n=""; for x in $(LESSON_SEQ); do if [ "$$f" = 1 ]; then n=$$x; break; fi; if [ "$$x" = "$$cur" ]; then f=1; fi; done; if [ -n "$$n" ]; then git --no-pager diff "$$n"; else echo "No next lesson to compare against."; fi
+
+goto:      ## Check out a lesson by number, e.g. make goto LESSON=6
+	@for x in $(LESSON_SEQ); do case "$$x" in lesson/0$(LESSON)-*|lesson/$(LESSON)-*) echo "-> $$x"; git checkout "$$x"; exit 0;; esac; done; echo "Usage: make goto LESSON=<1..10>"
