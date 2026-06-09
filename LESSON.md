@@ -122,3 +122,18 @@ git diff lesson/03-kafka-producer -- order-ingest Program.cs
 
 In **lesson 03** `order-ingest` stops just logging and starts **producing** each
 accepted order to Kafka. Check out `lesson/03-kafka-producer`.
+
+<!-- NAV:START -->
+
+---
+
+## 🧭 Navigate
+
+| ◀ Previous | 🔑 Solution to this lesson | Next ▶ |
+|:---|:---:|---:|
+| [Lesson 01 — Tooling](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/lesson/01-tooling) | [view the diff](https://github.com/mike-kostov/dotnet-event-driven-orders/compare/lesson/02-order-ingest-api...lesson/03-kafka-producer) | [Lesson 03 — Kafka producer](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/lesson/03-kafka-producer) |
+
+Or from the terminal: `make prev` · `make solution` · `make next` · `make goto LESSON=2`
+*(`next`/`prev`/`goto` switch branches — commit or stash your edits first; they never discard your work.)*
+
+<!-- NAV:END -->
