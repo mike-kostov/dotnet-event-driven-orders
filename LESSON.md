@@ -164,3 +164,18 @@ git diff lesson/02-order-ingest-api -- hello/Dockerfile Makefile
 In **lesson 02** you write your first real service: `order-ingest`, an HTTP API
 that accepts orders. Check out `lesson/02-order-ingest-api` and open its
 `LESSON.md`.
+
+<!-- NAV:START -->
+
+---
+
+## 🧭 Navigate
+
+| ◀ Previous | 🔑 Solution to this lesson | Next ▶ |
+|:---|:---:|---:|
+| [Foundation (`main`)](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/main) | [view the diff](https://github.com/mike-kostov/dotnet-event-driven-orders/compare/lesson/01-tooling...lesson/02-order-ingest-api) | [Lesson 02 — order-ingest API](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/lesson/02-order-ingest-api) |
+
+Or from the terminal: `make prev` · `make solution` · `make next` · `make goto LESSON=1`
+*(`next`/`prev`/`goto` switch branches — commit or stash your edits first; they never discard your work.)*
+
+<!-- NAV:END -->
