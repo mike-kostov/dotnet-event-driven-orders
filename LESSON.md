@@ -54,6 +54,21 @@ docker compose version
 make --version
 ```
 
+> **Using Podman instead of Docker?** (e.g. your company standardizes on it.)
+> Podman is a drop-in replacement, so this whole tutorial works unchanged — you
+> just point the `docker` commands at Podman once, here in lesson 1:
+> - **Simplest:** alias `docker` to `podman`. Podman ships a Docker-compatible CLI
+>   and `podman compose`, so every `make` target and `docker compose …` command in
+>   these lessons runs as-is. (On Podman Desktop, enabling the Docker-compatible
+>   socket achieves the same thing.)
+> - **One caveat:** this tutorial relies on Compose health-gating
+>   (`depends_on: condition: service_healthy` / `service_completed_successfully`).
+>   Use a recent **`podman compose`** (Podman 4.7+, which uses Compose v2) — the
+>   older Python `podman-compose` may not honor those conditions.
+>
+> Everything below (and in every later lesson) is then identical; we say "Docker"
+> throughout, but it's really "your container engine."
+
 Create your local env file (it's gitignored), then start just the infra:
 
 ```bash
