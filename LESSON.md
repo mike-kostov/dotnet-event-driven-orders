@@ -115,3 +115,18 @@ git diff lesson/05-persistence-cqrs -- order-processor/ConsumerService.cs
 In **lesson 05** order-processor stops just logging and starts **persisting** to
 Postgres (DbUp migrations + Dapper + the CQRS write model). Check out
 `lesson/05-persistence-cqrs`.
+
+<!-- NAV:START -->
+
+---
+
+## 🧭 Navigate
+
+| ◀ Previous | 🔑 Solution to this lesson | Next ▶ |
+|:---|:---:|---:|
+| [Lesson 03 — Kafka producer](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/lesson/03-kafka-producer) | [view the diff](https://github.com/mike-kostov/dotnet-event-driven-orders/compare/lesson/04-kafka-consumer...lesson/05-persistence-cqrs) | [Lesson 05 — Persistence & CQRS](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/lesson/05-persistence-cqrs) |
+
+Or from the terminal: `make prev` · `make solution` · `make next` · `make goto LESSON=4`
+*(`next`/`prev`/`goto` switch branches — commit or stash your edits first; they never discard your work.)*
+
+<!-- NAV:END -->
