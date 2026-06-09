@@ -107,3 +107,18 @@ git diff lesson/04-kafka-consumer -- order-ingest/Program.cs
 
 In **lesson 04** you build `order-processor` — a worker that **consumes** these
 messages from Kafka. Check out `lesson/04-kafka-consumer`.
+
+<!-- NAV:START -->
+
+---
+
+## 🧭 Navigate
+
+| ◀ Previous | 🔑 Solution to this lesson | Next ▶ |
+|:---|:---:|---:|
+| [Lesson 02 — order-ingest API](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/lesson/02-order-ingest-api) | [view the diff](https://github.com/mike-kostov/dotnet-event-driven-orders/compare/lesson/03-kafka-producer...lesson/04-kafka-consumer) | [Lesson 04 — Consumer](https://github.com/mike-kostov/dotnet-event-driven-orders/tree/lesson/04-kafka-consumer) |
+
+Or from the terminal: `make prev` · `make solution` · `make next` · `make goto LESSON=3`
+*(`next`/`prev`/`goto` switch branches — commit or stash your edits first; they never discard your work.)*
+
+<!-- NAV:END -->
